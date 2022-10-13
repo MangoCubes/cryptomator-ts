@@ -1,0 +1,9 @@
+{
+  "name": "cryptomator-ts",
+  "version": "0.0.1",
+  "description": "Cryptomator library",
+  "main": "./dist/index.js",
+  "author": "MangoCubes <10383115+MangoCubes@users.noreply.github.com>",
+  "license": "MIT",
+  "private": true
+}
