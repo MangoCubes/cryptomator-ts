@@ -4,6 +4,7 @@ import b32 from "base32-encoding";
 import { scrypt } from "scrypt-js";
 import { DataProvider } from "./DataProvider";
 import { Base64Str, DirID, EncryptionKey, MACKey } from "./types";
+import { jwtVerify } from "jose";
 
 type VaultConfigHeader = {
 	kid: string;
@@ -46,17 +47,17 @@ export class Vault {
 	 */
 	static async open(provider: DataProvider, dir: string, password: string, name: string | null) {
 		if (!dir.endsWith('/')) dir += '/';
-		const jwt = await provider.readFileString(dir + 'vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
+		const token = await provider.readFileString(dir + 'vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
 		const mk = JSON.parse(await provider.readFileString(dir + 'masterkey.cryptomator')) as Masterkey;
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), base64Decode(mk.scryptSalt), mk.scryptCostParam, mk.scryptBlockSize, 1, 32);
-		const kek = await window.crypto.subtle.importKey(
+		const kek = await crypto.subtle.importKey(
 			'raw',
 			kekBuffer,
 			'AES-KW',
 			false,
 			['unwrapKey']
 		);
-		const encKey = await window.crypto.subtle.unwrapKey(
+		const encKey = await crypto.subtle.unwrapKey(
 			'raw',
 			base64Decode(mk.primaryMasterKey),
 			kek,
@@ -65,8 +66,9 @@ export class Vault {
 			true,
 			['encrypt', 'decrypt']
 		) as EncryptionKey;
-		const extractedEnc = await window.crypto.subtle.exportKey('raw', encKey);
-		const macKey = await window.crypto.subtle.unwrapKey(
+		const extractedEnc = await crypto.subtle.exportKey('raw', encKey);
+		jwtVerify(token, new Uint8Array(extractedEnc));
+		const macKey = await crypto.subtle.unwrapKey(
 			'raw',
 			base64Decode(mk.hmacMasterKey),
 			kek,
@@ -75,7 +77,7 @@ export class Vault {
 			true,
 			[]
 		) as MACKey;
-		const extractedMac = await window.crypto.subtle.exportKey('raw', macKey);
+		const extractedMac = await crypto.subtle.exportKey('raw', macKey);
 		const sivArr = new Uint8Array(64);
 		sivArr.set(new Uint8Array(extractedMac), 0);
 		sivArr.set(new Uint8Array(extractedEnc), 32);
@@ -87,7 +89,7 @@ export class Vault {
 		const sivId = this.siv.seal([], new TextEncoder().encode(dirId));
 		const ab = await crypto.subtle.digest('SHA-1', sivId);
 		const dirHash = b32.stringify(new Uint8Array(ab), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567');
-		return `d/${dirHash.substring(0, 2)}/${dirHash.substring(2)}`
+		return `d/${dirHash.substring(0, 2)}/${dirHash.substring(2)}`;
 	}
 
 	async getRootDir(){
@@ -96,7 +98,7 @@ export class Vault {
 }
 
 function base64Decode(encoded: Base64Str): Uint8Array {
-	let decoded = window.atob(encoded);
+	let decoded = atob(encoded);
     let bytes = new Uint8Array(decoded.length);
     for (var i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
     return bytes;

@@ -4,7 +4,7 @@ import { LocalStorageProvider } from '../src/providers/LocalStorageProvider';
 
 describe('Test opening an existing vault', () => {
 	test('Check if subtle crypto and TextEncoder exists', () => {
-		expect(window.crypto.subtle).toBeTruthy();
+		expect(crypto.subtle).toBeTruthy();
 		expect(new TextEncoder()).toBeTruthy();
 	})
 	const provider = new LocalStorageProvider();
