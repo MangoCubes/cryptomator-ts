@@ -1,4 +1,6 @@
+import { scrypt } from "scrypt-js";
 import { DataProvider } from "./DataProvider";
+import { Base64Str } from "./types";
 
 type VaultConfigHeader = {
 	kid: string;
@@ -11,6 +13,15 @@ type VaultConfig = {
 	shorteningThreshold: number;
 	jti: string;
 	cipherCombo: 'SIV_CTRMAC';
+}
+
+type Masterkey = {
+	primaryMasterKey: Base64Str;
+	hmacMasterKey: Base64Str;
+	scryptBlockSize: number;
+	scryptCostParam: number;
+	scryptSalt: Base64Str;
+	versionMac: Base64Str;
 }
 
 export class Vault {
@@ -28,6 +39,40 @@ export class Vault {
 	static async open(provider: DataProvider, dir: string, password: string, name: string | null) {
 		if (dir.endsWith('/')) dir += '/';
 		const jwt = provider.readFileString(dir + 'vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
-
+		const mk = JSON.parse(provider.readFileString(dir + 'masterkey.cryptomator')) as Masterkey;
+		const kekBuffer = await scrypt(new TextEncoder().encode(password), base64Decode(mk.scryptSalt), mk.scryptCostParam, mk.scryptBlockSize, 1, 32);
+		const kek = await window.crypto.subtle.importKey(
+			'raw',
+			kekBuffer,
+			'AES-KW',
+			false,
+			['unwrapKey']
+		);
+		const encKey = await window.crypto.subtle.unwrapKey(
+			'raw',
+			base64Decode(mk.primaryMasterKey),
+			kek,
+			'AES-KW',
+			'AES-CTR',
+			true,
+			['encrypt', 'decrypt']
+		);
+		const extracted = await window.crypto.subtle.exportKey('raw', encKey);
+		const macKey = await window.crypto.subtle.unwrapKey(
+			'raw',
+			base64Decode(mk.hmacMasterKey),
+			kek,
+			'AES-KW',
+			'AES-CTR',
+			false,
+			[]
+		);
 	}
+}
+
+function base64Decode(encoded: Base64Str): Uint8Array {
+	let decoded = window.atob(encoded);
+    let bytes = new Uint8Array(decoded.length);
+    for (var i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
+    return bytes;
 }
