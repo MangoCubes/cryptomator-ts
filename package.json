@@ -7,7 +7,12 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
+    "@stablelib/aes": "^1.0.1",
+    "@stablelib/siv": "^1.0.2",
     "@trust/webcrypto": "^0.9.2",
+    "@types/base32-encoding": "^1.0.0",
+    "base32-encode": "^1.2.0",
+    "jsonwebtoken": "^8.5.1",
     "scrypt-js": "^3.0.1"
   },
   "devDependencies": {
@@ -22,7 +27,7 @@
     "test": "jest"
   },
   "jest": {
-	"preset": "ts-jest",
+    "preset": "ts-jest",
     "setupFiles": [
       "./test/setup.ts"
     ],

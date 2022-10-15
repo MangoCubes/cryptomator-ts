@@ -21,4 +21,8 @@ describe('Test opening an existing vault', () => {
 		await expect(pendingVault).resolves.not.toThrowError();
 		vault = await pendingVault;
 	});
+	test('Testing root directory id generation', async () => {
+		const dir = await vault.getRootDir();
+		expect(dir).toEqual('d/X2/25HWQSVVOHRX46O5KNY47TZ6S6XUEX');
+	})
 });
