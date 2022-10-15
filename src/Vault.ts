@@ -1,6 +1,6 @@
 import { scrypt } from "scrypt-js";
 import { DataProvider } from "./DataProvider";
-import { Base64Str } from "./types";
+import { Base64Str, EncryptionKey, MACKey } from "./types";
 
 type VaultConfigHeader = {
 	kid: string;
@@ -25,6 +25,11 @@ type Masterkey = {
 }
 
 export class Vault {
+
+	constructor(public provider: DataProvider, public dir: string, public name: string | null, private encKey: EncryptionKey, private macKey: MACKey){
+		
+	}
+
 	/**
 	 * Open an existing vault
 	 * @param provider Data provider
@@ -37,7 +42,7 @@ export class Vault {
 	 * Custom vault.cryptomator file
 	 */
 	static async open(provider: DataProvider, dir: string, password: string, name: string | null) {
-		if (dir.endsWith('/')) dir += '/';
+		if (!dir.endsWith('/')) dir += '/';
 		const jwt = await provider.readFileString(dir + 'vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
 		const mk = JSON.parse(await provider.readFileString(dir + 'masterkey.cryptomator')) as Masterkey;
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), base64Decode(mk.scryptSalt), mk.scryptCostParam, mk.scryptBlockSize, 1, 32);
@@ -56,7 +61,7 @@ export class Vault {
 			'AES-CTR',
 			true,
 			['encrypt', 'decrypt']
-		);
+		) as EncryptionKey;
 		// const extracted = await window.crypto.subtle.exportKey('raw', encKey);
 		const macKey = await window.crypto.subtle.unwrapKey(
 			'raw',
@@ -66,7 +71,8 @@ export class Vault {
 			'AES-CTR',
 			false,
 			[]
-		);
+		) as MACKey;
+		return new Vault(provider, dir, name, encKey, macKey);
 	}
 }
 
