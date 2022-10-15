@@ -38,8 +38,8 @@ export class Vault {
 	 */
 	static async open(provider: DataProvider, dir: string, password: string, name: string | null) {
 		if (dir.endsWith('/')) dir += '/';
-		const jwt = provider.readFileString(dir + 'vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
-		const mk = JSON.parse(provider.readFileString(dir + 'masterkey.cryptomator')) as Masterkey;
+		const jwt = await provider.readFileString(dir + 'vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
+		const mk = JSON.parse(await provider.readFileString(dir + 'masterkey.cryptomator')) as Masterkey;
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), base64Decode(mk.scryptSalt), mk.scryptCostParam, mk.scryptBlockSize, 1, 32);
 		const kek = await window.crypto.subtle.importKey(
 			'raw',
@@ -57,7 +57,7 @@ export class Vault {
 			true,
 			['encrypt', 'decrypt']
 		);
-		const extracted = await window.crypto.subtle.exportKey('raw', encKey);
+		// const extracted = await window.crypto.subtle.exportKey('raw', encKey);
 		const macKey = await window.crypto.subtle.unwrapKey(
 			'raw',
 			base64Decode(mk.hmacMasterKey),
