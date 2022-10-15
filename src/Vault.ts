@@ -1,6 +1,9 @@
+import { AES } from "@stablelib/aes";
+import { SIV } from "@stablelib/siv";
+import b32 from "base32-encoding";
 import { scrypt } from "scrypt-js";
 import { DataProvider } from "./DataProvider";
-import { Base64Str, EncryptionKey, MACKey } from "./types";
+import { Base64Str, DirID, EncryptionKey, MACKey } from "./types";
 
 type VaultConfigHeader = {
 	kid: string;
@@ -26,7 +29,7 @@ type Masterkey = {
 
 export class Vault {
 
-	constructor(public provider: DataProvider, public dir: string, public name: string | null, private encKey: EncryptionKey, private macKey: MACKey){
+	constructor(public provider: DataProvider, public dir: string, public name: string | null, private encKey: EncryptionKey, private macKey: MACKey, private siv: SIV){
 		
 	}
 
@@ -62,17 +65,33 @@ export class Vault {
 			true,
 			['encrypt', 'decrypt']
 		) as EncryptionKey;
-		// const extracted = await window.crypto.subtle.exportKey('raw', encKey);
+		const extractedEnc = await window.crypto.subtle.exportKey('raw', encKey);
 		const macKey = await window.crypto.subtle.unwrapKey(
 			'raw',
 			base64Decode(mk.hmacMasterKey),
 			kek,
 			'AES-KW',
 			'AES-CTR',
-			false,
+			true,
 			[]
 		) as MACKey;
-		return new Vault(provider, dir, name, encKey, macKey);
+		const extractedMac = await window.crypto.subtle.exportKey('raw', macKey);
+		const sivArr = new Uint8Array(64);
+		sivArr.set(new Uint8Array(extractedMac), 0);
+		sivArr.set(new Uint8Array(extractedEnc), 32);
+		const siv = new SIV(AES, sivArr);
+		return new Vault(provider, dir, name, encKey, macKey, siv);
+	}
+
+	async getDir(dirId: DirID){
+		const sivId = this.siv.seal([], new TextEncoder().encode(dirId));
+		const ab = await crypto.subtle.digest('SHA-1', sivId);
+		const dirHash = b32.stringify(new Uint8Array(ab), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567');
+		return `d/${dirHash.substring(0, 2)}/${dirHash.substring(2)}`
+	}
+
+	async getRootDir(){
+		return await this.getDir('' as DirID);
 	}
 }
 
