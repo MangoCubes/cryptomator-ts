@@ -4,8 +4,8 @@ import b32 from "base32-encoding";
 import { scrypt } from "scrypt-js";
 import { DataProvider } from "./DataProvider";
 import { Base64Str, DirID, EncryptionKey, MACKey } from "./types";
-import { jwtVerify } from "jose";
-import { InvalidVaultError, PasswordError } from "./Errors";
+import { base64url, jwtVerify } from "jose";
+import { DecryptionError, DecryptTarget, InvalidVaultError } from "./Errors";
 
 type VaultConfigHeader = {
 	kid: string;
@@ -61,7 +61,7 @@ export class Vault {
 				['unwrapKey']
 			);
 		} catch(e) {
-			throw new PasswordError();
+			throw new DecryptionError(DecryptTarget.Vault);
 		}
 		const encKey = await crypto.subtle.unwrapKey(
 			'raw',
@@ -109,8 +109,10 @@ export class Vault {
 		return await this.getDir('' as DirID);
 	}
 
-	async decryptFileName(){
-		
+	async decryptFileName(name: string, parent: DirID): Promise<string>{
+		const decrypted = this.siv.open([new TextEncoder().encode(parent)], base64url.decode(name));
+		if(decrypted === null) throw new DecryptionError(DecryptTarget.Filename);
+		return new TextDecoder().decode(decrypted);
 	}
 }
 
