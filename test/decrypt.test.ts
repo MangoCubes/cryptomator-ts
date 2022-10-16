@@ -26,14 +26,20 @@ describe('Test opening an existing vault', () => {
 		const dir = await vault.getRootDir();
 		expect(dir.includes('d/X2/25HWQSVVOHRX46O5KNY47TZ6S6XUEX')).toBeTruthy();
 	});
-	let rootItemNames;
+	let rootItemNames: string[];
 	test('Try listing encrypted items in root', async () => {
 		const pendingList = vault.listEncrypted('' as DirID);
 		expect(pendingList).resolves.not.toThrowError();
 		rootItemNames = await pendingList;
-	})
+	});
+	
+	let decryptedFileNames: string[];
 	test('Try decrypting names of items in root', async () => {
-		const name = 'zFsOpvX49Qfc1_lgFHuG0PWrAx2pDCDSdrOAtTQ04Bk5GY6Jpw==';
-		console.log(await vault.decryptFileName(name, '' as DirID));
+		const pendingNameList: Promise<string>[] = [];
+		for(const name of rootItemNames) pendingNameList.push(vault.decryptFileName(name, '' as DirID));
+		const pendingNames = Promise.all(pendingNameList);
+		expect(pendingNames).resolves.not.toThrowError();
+		decryptedFileNames = await pendingNames;
+		console.log(decryptedFileNames)
 	});
 });

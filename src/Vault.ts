@@ -116,6 +116,7 @@ export class Vault {
 	}
 
 	async decryptFileName(name: string, parent: DirID): Promise<string>{
+		if(name.endsWith('.c9r')) name = name.slice(0, -4);
 		const decrypted = this.siv.open([new TextEncoder().encode(parent)], base64url.decode(name));
 		if(decrypted === null) throw new DecryptionError(DecryptTarget.Filename);
 		return new TextDecoder().decode(decrypted);
