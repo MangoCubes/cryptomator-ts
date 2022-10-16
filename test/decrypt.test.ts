@@ -25,11 +25,9 @@ describe('Test opening an existing vault', () => {
 	test('Testing root directory id generation', async () => {
 		await expect(vault.getRootDir()).resolves.not.toThrowError();
 	});
-	let rootItemNames: string[];
 	test('Try listing encrypted items in root', async () => {
 		const pendingList = vault.listEncrypted('' as DirID);
 		expect(pendingList).resolves.not.toThrowError();
-		rootItemNames = await pendingList;
 	});
 	
 	test('Try decrypting names of items in root', async () => {

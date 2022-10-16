@@ -128,10 +128,10 @@ export class Vault {
 	async listItems(dirId: DirID){
 		const enc = await this.listEncrypted(dirId);
 		const pendingNameList: Promise<string>[] = [];
-		for(const name of enc) pendingNameList.push(this.decryptFileName(name, '' as DirID));
+		for(const name of enc) pendingNameList.push(this.decryptFileName(name.name, '' as DirID));
 		const names = await Promise.all(pendingNameList);
 		const items: EncryptedItem[] = [];
-		for(let i = 0; i < enc.length; i++) items.push(new EncryptedItem(enc[i], names[i], dirId));
+		for(let i = 0; i < enc.length; i++) items.push(new EncryptedItem(enc[i].name, names[i], dirId, enc[i].type));
 		return items;
 	}
 }

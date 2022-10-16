@@ -2,7 +2,7 @@ export type Item = {
 	type: 'f' | 'd';
 	name: string;
 	fullName: ItemPath;
-	lastMod: number; //Timestamp
+	lastMod: Date;
 	size: number;
 }
 
