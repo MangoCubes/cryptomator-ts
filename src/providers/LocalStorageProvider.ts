@@ -9,7 +9,7 @@ export class LocalStorageProvider implements DataProvider{
 	async readFileString (path: string): Promise<string>{
 		return await fs.readFile(path, 'utf-8');
 	}
-	async listItems (path: string): Promise<Item[]>{
-		throw new Error('Not implemented');
+	async listItems (path: string): Promise<string[]>{
+		return await fs.readdir(path);
 	};
 }

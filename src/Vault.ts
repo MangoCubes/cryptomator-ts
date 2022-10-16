@@ -105,6 +105,12 @@ export class Vault {
 		return `${this.dir}/d/${dirHash.substring(0, 2)}/${dirHash.substring(2)}`;
 	}
 
+	async listEncrypted(dirId: DirID){
+		const dir = await this.getDir(dirId);
+		const items = await this.provider.listItems(dir);
+		return items;
+	}
+
 	async getRootDir(){
 		return await this.getDir('' as DirID);
 	}

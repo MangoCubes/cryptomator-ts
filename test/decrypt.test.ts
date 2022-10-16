@@ -2,6 +2,7 @@ import { describe, expect, test } from '@jest/globals';
 import path from "path";
 import { Vault } from '../src/Vault';
 import { LocalStorageProvider } from '../src/providers/LocalStorageProvider';
+import { DirID } from '../src/types';
 
 async function decrypt(provider: LocalStorageProvider, password: string): Promise<Vault>{
 	const v = await Vault.open(provider, path.resolve(__dirname, 'Test'), password, 'Test Vault');
@@ -24,5 +25,15 @@ describe('Test opening an existing vault', () => {
 	test('Testing root directory id generation', async () => {
 		const dir = await vault.getRootDir();
 		expect(dir.includes('d/X2/25HWQSVVOHRX46O5KNY47TZ6S6XUEX')).toBeTruthy();
+	});
+	let rootItemNames;
+	test('Try listing encrypted items in root', async () => {
+		const pendingList = vault.listEncrypted('' as DirID);
+		expect(pendingList).resolves.not.toThrowError();
+		rootItemNames = await pendingList;
+	})
+	test('Try decrypting names of items in root', async () => {
+		const name = 'zFsOpvX49Qfc1_lgFHuG0PWrAx2pDCDSdrOAtTQ04Bk5GY6Jpw==';
+		console.log(await vault.decryptFileName(name, '' as DirID));
 	});
 });
