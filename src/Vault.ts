@@ -6,6 +6,7 @@ import { DataProvider } from "./DataProvider";
 import { Base64Str, DirID, EncryptionKey, MACKey } from "./types";
 import { base64url, jwtVerify } from "jose";
 import { DecryptionError, DecryptTarget, InvalidVaultError } from "./Errors";
+import { EncryptedItem } from "./EncryptedItem";
 
 type VaultConfigHeader = {
 	kid: string;
@@ -122,6 +123,16 @@ export class Vault {
 		const decrypted = this.siv.open([new TextEncoder().encode(parent)], base64url.decode(name));
 		if(decrypted === null) throw new DecryptionError(DecryptTarget.Filename);
 		return new TextDecoder().decode(decrypted);
+	}
+
+	async listItems(dirId: DirID){
+		const enc = await this.listEncrypted(dirId);
+		const pendingNameList: Promise<string>[] = [];
+		for(const name of enc) pendingNameList.push(this.decryptFileName(name, '' as DirID));
+		const names = await Promise.all(pendingNameList);
+		const items: EncryptedItem[] = [];
+		for(let i = 0; i < enc.length; i++) items.push(new EncryptedItem(enc[i], names[i], dirId));
+		return items;
 	}
 }
 

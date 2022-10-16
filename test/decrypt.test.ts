@@ -33,9 +33,6 @@ describe('Test opening an existing vault', () => {
 	});
 	
 	test('Try decrypting names of items in root', async () => {
-		const pendingNameList: Promise<string>[] = [];
-		for(const name of rootItemNames) pendingNameList.push(vault.decryptFileName(name, '' as DirID));
-		const pendingNames = Promise.all(pendingNameList);
-		expect(pendingNames).resolves.not.toThrowError();
+		expect(vault.listItems('' as DirID)).resolves.not.toThrowError();
 	});
 });
