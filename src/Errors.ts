@@ -1,6 +1,8 @@
-export enum DecryptTarget {
+import { Item } from "./types";
+
+export enum DecryptionTarget {
 	Filename,
-	File,
+	Item,
 	Vault
 }
 
@@ -8,10 +10,15 @@ export class InvalidVaultError extends Error{
 	
 }
 
-export class DecryptionError extends Error{
-	target: DecryptTarget;
-	constructor(target: DecryptTarget){
+type DecErrMap = {
+	[DecryptionTarget.Filename]: Item;
+	[DecryptionTarget.Item]: Item;
+	[DecryptionTarget.Vault]: null;
+};
+
+export class DecryptionError<T extends DecryptionTarget> extends Error{
+	constructor(public type: T, public target: DecErrMap[T]){
 		super();
-		this.target = target;
 	}
 }
+

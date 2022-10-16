@@ -3,9 +3,9 @@ import { SIV } from "@stablelib/siv";
 import b32 from "base32-encoding";
 import { scrypt } from "scrypt-js";
 import { DataProvider } from "./DataProvider";
-import { Base64Str, DirID, EncryptionKey, MACKey } from "./types";
+import { Base64Str, DirID, EncryptionKey, Item, MACKey } from "./types";
 import { base64url, jwtVerify } from "jose";
-import { DecryptionError, DecryptTarget, InvalidVaultError } from "./Errors";
+import { DecryptionError, DecryptionTarget, InvalidVaultError } from "./Errors";
 import { EncryptedItem } from "./EncryptedItem";
 
 type VaultConfigHeader = {
@@ -62,7 +62,7 @@ export class Vault {
 				['unwrapKey']
 			);
 		} catch(e) {
-			throw new DecryptionError(DecryptTarget.Vault);
+			throw new DecryptionError(DecryptionTarget.Vault, null);
 		}
 		const encKey = await crypto.subtle.unwrapKey(
 			'raw',
@@ -118,17 +118,19 @@ export class Vault {
 		return await this.getDir('' as DirID);
 	}
 
-	async decryptFileName(name: string, parent: DirID): Promise<string>{
-		if(name.endsWith('.c9r')) name = name.slice(0, -4);
+	async decryptFileName(item: Item, parent: DirID): Promise<string>{
+		let name;
+		if(item.name.endsWith('.c9r')) name = item.name.slice(0, -4);
+		else name = item.name;
 		const decrypted = this.siv.open([new TextEncoder().encode(parent)], base64url.decode(name));
-		if(decrypted === null) throw new DecryptionError(DecryptTarget.Filename);
+		if(decrypted === null) throw new DecryptionError(DecryptionTarget.Filename, item);
 		return new TextDecoder().decode(decrypted);
 	}
 
 	async listItems(dirId: DirID){
 		const enc = await this.listEncrypted(dirId);
 		const pendingNameList: Promise<string>[] = [];
-		for(const name of enc) pendingNameList.push(this.decryptFileName(name.name, '' as DirID));
+		for(const item of enc) pendingNameList.push(this.decryptFileName(item, '' as DirID));
 		const names = await Promise.all(pendingNameList);
 		const items: EncryptedItem[] = [];
 		for(let i = 0; i < enc.length; i++) items.push(new EncryptedItem(enc[i].name, names[i], dirId, enc[i].type));
