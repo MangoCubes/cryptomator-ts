@@ -5,6 +5,7 @@ import { scrypt } from "scrypt-js";
 import { DataProvider } from "./DataProvider";
 import { Base64Str, DirID, EncryptionKey, MACKey } from "./types";
 import { jwtVerify } from "jose";
+import { InvalidVaultError, PasswordError } from "./Errors";
 
 type VaultConfigHeader = {
 	kid: string;
@@ -50,13 +51,18 @@ export class Vault {
 		const token = await provider.readFileString(dir + 'vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
 		const mk = JSON.parse(await provider.readFileString(dir + 'masterkey.cryptomator')) as Masterkey;
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), base64Decode(mk.scryptSalt), mk.scryptCostParam, mk.scryptBlockSize, 1, 32);
-		const kek = await crypto.subtle.importKey(
-			'raw',
-			kekBuffer,
-			'AES-KW',
-			false,
-			['unwrapKey']
-		);
+		let kek: CryptoKey;
+		try {
+			kek = await crypto.subtle.importKey(
+				'raw',
+				kekBuffer,
+				'AES-KW',
+				false,
+				['unwrapKey']
+			);
+		} catch(e) {
+			throw new PasswordError();
+		}
 		const encKey = await crypto.subtle.unwrapKey(
 			'raw',
 			base64Decode(mk.primaryMasterKey),
@@ -67,7 +73,6 @@ export class Vault {
 			['encrypt', 'decrypt']
 		) as EncryptionKey;
 		const extractedEnc = await crypto.subtle.exportKey('raw', encKey);
-		jwtVerify(token, new Uint8Array(extractedEnc));
 		const macKey = await crypto.subtle.unwrapKey(
 			'raw',
 			base64Decode(mk.hmacMasterKey),
@@ -78,10 +83,18 @@ export class Vault {
 			[]
 		) as MACKey;
 		const extractedMac = await crypto.subtle.exportKey('raw', macKey);
-		const sivArr = new Uint8Array(64);
-		sivArr.set(new Uint8Array(extractedMac), 0);
-		sivArr.set(new Uint8Array(extractedEnc), 32);
-		const siv = new SIV(AES, sivArr);
+		const buffer = new Uint8Array(64);
+		buffer.set(new Uint8Array(extractedMac), 0);
+		buffer.set(new Uint8Array(extractedEnc), 32);
+		const siv = new SIV(AES, buffer);
+		buffer.set(new Uint8Array(extractedEnc), 0);
+		buffer.set(new Uint8Array(extractedMac), 32);
+		try {
+			jwtVerify(token, new Uint8Array(buffer));
+		} catch(e) {
+			throw new InvalidVaultError();
+		}
+		buffer.fill(0);
 		return new Vault(provider, dir, name, encKey, macKey, siv);
 	}
 
