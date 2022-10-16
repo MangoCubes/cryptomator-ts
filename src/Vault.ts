@@ -47,9 +47,9 @@ export class Vault {
 	 * Custom vault.cryptomator file
 	 */
 	static async open(provider: DataProvider, dir: string, password: string, name: string | null) {
-		if (!dir.endsWith('/')) dir += '/';
-		const token = await provider.readFileString(dir + 'vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
-		const mk = JSON.parse(await provider.readFileString(dir + 'masterkey.cryptomator')) as Masterkey;
+		if (dir.endsWith('/')) dir = dir.slice(0, -1);
+		const token = await provider.readFileString(dir + '/vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
+		const mk = JSON.parse(await provider.readFileString(dir + '/masterkey.cryptomator')) as Masterkey;
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), base64Decode(mk.scryptSalt), mk.scryptCostParam, mk.scryptBlockSize, 1, 32);
 		let kek: CryptoKey;
 		try {
@@ -102,11 +102,15 @@ export class Vault {
 		const sivId = this.siv.seal([], new TextEncoder().encode(dirId));
 		const ab = await crypto.subtle.digest('SHA-1', sivId);
 		const dirHash = b32.stringify(new Uint8Array(ab), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567');
-		return `d/${dirHash.substring(0, 2)}/${dirHash.substring(2)}`;
+		return `${this.dir}/d/${dirHash.substring(0, 2)}/${dirHash.substring(2)}`;
 	}
 
 	async getRootDir(){
 		return await this.getDir('' as DirID);
+	}
+
+	async decryptFileName(){
+		
 	}
 }
 
