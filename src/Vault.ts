@@ -72,7 +72,7 @@ export class Vault {
 			true,
 			['encrypt', 'decrypt']
 		) as EncryptionKey;
-		const extractedEnc = await crypto.subtle.exportKey('raw', encKey);
+		const extractedEnc = new Uint8Array(await crypto.subtle.exportKey('raw', encKey));
 		const macKey = await crypto.subtle.unwrapKey(
 			'raw',
 			base64Decode(mk.hmacMasterKey),
@@ -82,13 +82,15 @@ export class Vault {
 			true,
 			[]
 		) as MACKey;
-		const extractedMac = await crypto.subtle.exportKey('raw', macKey);
+		const extractedMac = new Uint8Array(await crypto.subtle.exportKey('raw', macKey));
 		const buffer = new Uint8Array(64);
-		buffer.set(new Uint8Array(extractedMac), 0);
-		buffer.set(new Uint8Array(extractedEnc), 32);
+		buffer.set(extractedMac, 0);
+		buffer.set(extractedEnc, 32);
 		const siv = new SIV(AES, buffer);
-		buffer.set(new Uint8Array(extractedEnc), 0);
-		buffer.set(new Uint8Array(extractedMac), 32);
+		buffer.set(extractedEnc, 0);
+		buffer.set(extractedMac, 32);
+		extractedMac.fill(0);
+		extractedEnc.fill(0);
 		try {
 			jwtVerify(token, new Uint8Array(buffer));
 		} catch(e) {

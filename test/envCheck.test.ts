@@ -9,6 +9,6 @@ describe('Test opening an existing vault', () => {
 	})
 	const provider = new LocalStorageProvider();
 	test('Check if LocalStorageProvider works', async () => {
-		expect(await provider.readFileString(path.resolve(__dirname, 'Test', 'qq11@@11.txt'))).toEqual('Hello world');
+		expect(await provider.readFileString(path.resolve(__dirname, 'Test', 'qq11@@11.txt'))).toEqual('Yes, this is the vault password.');
 	});
 });
