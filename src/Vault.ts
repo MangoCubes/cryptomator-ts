@@ -133,7 +133,7 @@ export class Vault {
 		for(const item of enc) pendingNameList.push(this.decryptFileName(item, '' as DirID));
 		const names = await Promise.all(pendingNameList);
 		const items: EncryptedItem[] = [];
-		for(let i = 0; i < enc.length; i++) items.push(new EncryptedItem(enc[i].name, names[i], dirId, enc[i].type));
+		for(let i = 0; i < enc.length; i++) items.push(new EncryptedItem(enc[i].name, names[i], dirId, enc[i].type, enc[i].lastMod, enc[i].size, enc[i].fullName));
 		return items;
 	}
 }
