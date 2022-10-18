@@ -37,6 +37,16 @@ describe('Test opening an existing vault', () => {
 		await expect(vault.listItems('' as DirID)).resolves.not.toThrowError();
 	});
 
+	test('Try getting directory ID of folders in root', async () => {
+		const vault = await decrypt(provider, 'qq11@@11');
+		const items = await vault.listItems('' as DirID);
+		const folderNames: Promise<DirID>[] = [];
+		for(const item of items){
+			if(item.type === 'd') folderNames.push(item.getDirId());
+		}
+		await expect(Promise.all(folderNames)).resolves.not.toThrowError();
+	});
+
 	test('Try decrypting header of a file', async () => {
 		const vault = await decrypt(provider, 'qq11@@11');
 		const items = await vault.listItems('' as DirID);
