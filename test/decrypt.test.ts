@@ -17,31 +17,32 @@ describe('Test opening an existing vault', () => {
 		await expect(decrypt(provider, '')).rejects.toThrowError();
 		await expect(decrypt(provider, 'qq11@@@11')).rejects.toThrowError();
 	});
-	let vault: Vault;
+
 	test('Try opening a vault with a correct password', async () => {
-		const pendingVault = decrypt(provider, 'qq11@@11');
-		await expect(pendingVault).resolves.not.toThrowError();
-		vault = await pendingVault;
+		await expect(decrypt(provider, 'qq11@@11')).resolves.not.toThrowError();
 	});
+
 	test('Testing root directory id generation', async () => {
+		const vault = await decrypt(provider, 'qq11@@11');
 		await expect(vault.getRootDir()).resolves.not.toThrowError();
 	});
+
 	test('Try listing encrypted items in root', async () => {
-		const pendingList = vault.listEncrypted('' as DirID);
-		expect(pendingList).resolves.not.toThrowError();
+		const vault = await decrypt(provider, 'qq11@@11');
+		await expect(vault.listEncrypted('' as DirID)).resolves.not.toThrowError();
 	});
 	
-	let items: EncryptedItem[];
 	test('Try decrypting names of items in root', async () => {
-		const pendingItems = vault.listItems('' as DirID);
-		expect(pendingItems).resolves.not.toThrowError();
-		items = await pendingItems;
+		const vault = await decrypt(provider, 'qq11@@11');
+		await expect(vault.listItems('' as DirID)).resolves.not.toThrowError();
 	});
 
 	test('Try decrypting header of a file', async () => {
+		const vault = await decrypt(provider, 'qq11@@11');
+		const items = await vault.listItems('' as DirID);
 		const firstFile = items.find(i => i.type === 'f');
 		const pendingContentKey = firstFile!.decryptHeader();
-		expect(pendingContentKey).resolves.not.toThrowError();
+		await expect(pendingContentKey).resolves.not.toThrowError();
 		console.log(await pendingContentKey);
 	});
 });
