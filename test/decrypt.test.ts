@@ -3,7 +3,7 @@ import path from "path";
 import { Vault } from '../src/Vault';
 import { LocalStorageProvider } from '../src/providers/LocalStorageProvider';
 import { DirID } from '../src/types';
-import { EncryptedItem } from '../src/EncryptedItem';
+import { EncryptedFile } from '../src/encrypted/EncryptedFile';
 
 async function decrypt(provider: LocalStorageProvider, password: string): Promise<Vault>{
 	const v = await Vault.open(provider, path.resolve(__dirname, 'Test'), password, 'Test Vault');
@@ -41,8 +41,7 @@ describe('Test opening an existing vault', () => {
 		const vault = await decrypt(provider, 'qq11@@11');
 		const items = await vault.listItems('' as DirID);
 		const firstFile = items.find(i => i.type === 'f');
-		const pendingContentKey = firstFile!.decryptHeader();
+		const pendingContentKey = (firstFile! as EncryptedFile).decryptHeader();
 		await expect(pendingContentKey).resolves.not.toThrowError();
-		console.log(await pendingContentKey);
 	});
 });

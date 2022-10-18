@@ -6,7 +6,9 @@ import { DataProvider } from "./DataProvider";
 import { Base64Str, DirID, EncryptionKey, Item, MACKey } from "./types";
 import { base64url, jwtVerify } from "jose";
 import { DecryptionError, DecryptionTarget, InvalidSignatureError } from "./Errors";
-import { EncryptedItem } from "./EncryptedItem";
+import { EncryptedItem } from "./encrypted/EncryptedItemBase";
+import { EncryptedDir } from "./encrypted/EncryptedDir";
+import { EncryptedFile } from "./encrypted/EncryptedFile";
 
 type VaultConfigHeader = {
 	kid: string;
@@ -136,7 +138,11 @@ export class Vault {
 		for(const item of enc) pendingNameList.push(this.decryptFileName(item, '' as DirID));
 		const names = await Promise.all(pendingNameList);
 		const items: EncryptedItem[] = [];
-		for(let i = 0; i < enc.length; i++) items.push(new EncryptedItem(this, enc[i].name, enc[i].fullName, names[i], dirId, enc[i].type, enc[i].lastMod, enc[i].size));
+		for(let i = 0; i < enc.length; i++) {
+			const item = enc[i];
+			if(item.type === 'd') items.push(new EncryptedDir(this, item.name, item.fullName, names[i], dirId, item.lastMod));
+			if(item.type === 'f') items.push(new EncryptedFile(this, item.name, item.fullName, names[i], dirId, item.lastMod, item.size));
+		}
 		return items;
 	}
 }

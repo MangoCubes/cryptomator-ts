@@ -1,10 +1,19 @@
-export type Item = {
-	type: 'f' | 'd';
+export type ItemBase = {
 	name: string;
 	fullName: ItemPath;
 	lastMod: Date;
+}
+
+export type Directory = ItemBase & {
+	type: 'd';
+}
+
+export type File = ItemBase & {
+	type: 'f';
 	size: number;
 }
+
+export type Item = File | Directory;
 
 export type ItemPath = string & {__type: 'ItemPath'};
 export type Base64Str = string & {__type: 'Base64Str'};

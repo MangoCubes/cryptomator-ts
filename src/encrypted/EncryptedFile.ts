@@ -1,19 +1,16 @@
-import { InvalidSignatureError, DecryptionTarget } from "./Errors";
-import { DirID, Item, ItemPath } from "./types";
-import { Vault } from "./Vault";
+import { DecryptionTarget, InvalidSignatureError } from "../Errors";
+import { DirID, File, ItemPath } from "../types";
+import { Vault } from "../Vault";
+import { EncryptedItemBase } from "./EncryptedItemBase";
 
-export class EncryptedItem implements Item{
-	constructor(
-		public vault: Vault,
-		public encName: string,
-		public fullName: ItemPath, //Encrypted path
-		public name: string,
-		public dirId: DirID,
-		public type: 'd' | 'f',
-		public lastMod: Date,
-		public size: number,
-	){
+export class EncryptedFile extends EncryptedItemBase implements File{
+	type: 'f';
+	size: number;
 
+	constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, dirId: DirID, lastMod: Date, size: number){
+		super(vault, name, fullName, decryptedName, dirId, lastMod);
+		this.size = size;
+		this.type = 'f';
 	}
 
 	async decryptHeader(){
