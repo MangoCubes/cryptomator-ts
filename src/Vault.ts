@@ -116,7 +116,7 @@ export class Vault {
 	async listEncrypted(dirId: DirID){
 		const dir = await this.getDir(dirId);
 		const items = await this.provider.listItems(dir);
-		return items;
+		return items.filter(i => i.name !== 'dirid.c9r'); // TODO: Add a function that decrypts this
 	}
 
 	async getRootDir(){
@@ -135,7 +135,7 @@ export class Vault {
 	async listItems(dirId: DirID){
 		const enc = await this.listEncrypted(dirId);
 		const pendingNameList: Promise<string>[] = [];
-		for(const item of enc) pendingNameList.push(this.decryptFileName(item, '' as DirID));
+		for(const item of enc) pendingNameList.push(this.decryptFileName(item, dirId));
 		const names = await Promise.all(pendingNameList);
 		const items: EncryptedItem[] = [];
 		for(let i = 0; i < enc.length; i++) {
