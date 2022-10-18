@@ -13,6 +13,11 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		this.type = 'f';
 	}
 
+	/**
+	 * Decrypts a file header
+	 * @returns Content key that should be used for decrypting file content
+	 * @throws InvalidSignatureError if HMAC verification fails
+	 */
 	async decryptHeader(){
 		const data = await this.vault.provider.readFile(this.fullName);
 		const payload = data.slice(0, 56);

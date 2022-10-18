@@ -31,9 +31,10 @@ type Masterkey = {
 	scryptSalt: Base64Str;
 	versionMac: Base64Str;
 }
-
+/**
+ * Cryptomator vault object
+ */
 export class Vault {
-
 	constructor(public provider: DataProvider, public dir: string, public name: string | null, public encKey: EncryptionKey, public macKey: MACKey, private siv: SIV){
 		
 	}
@@ -44,6 +45,8 @@ export class Vault {
 	 * @param dir Directory of the vault that contains 'masterkey.cryptomator' and 'd' directory
 	 * @param password Password of the vault
 	 * @param name Name of the vault, may be null
+	 * @throws DecryptionError if the given password is wrong
+	 * @throws InvalidSignatureError if the integrity of vault.cryptomator file cannot be verified
 	 * 
 	 * Potential options later on:
 	 * Custom masterkey file
@@ -106,6 +109,11 @@ export class Vault {
 		return new Vault(provider, dir, name, encKey, macKey, siv);
 	}
 
+	/**
+	 * Accepts a directory ID, and returns the directory of the corresponding folder
+	 * @param dirId ID of the directory
+	 * @returns Corresponding _absolute_ directory
+	 */
 	async getDir(dirId: DirID){
 		const sivId = this.siv.seal([], new TextEncoder().encode(dirId));
 		const ab = await crypto.subtle.digest('SHA-1', sivId);
@@ -113,16 +121,31 @@ export class Vault {
 		return `${this.dir}/d/${dirHash.substring(0, 2)}/${dirHash.substring(2)}`;
 	}
 
+	/**
+	 * List all files under a given directory ID
+	 * @param dirId ID of the directory
+	 * @returns Items within that folder, not ready for decryption
+	 */
 	async listEncrypted(dirId: DirID){
 		const dir = await this.getDir(dirId);
 		const items = await this.provider.listItems(dir);
 		return items.filter(i => i.name !== 'dirid.c9r'); // TODO: Add a function that decrypts this
 	}
 
+	/**
+	 * Get directory of the root directory
+	 */
 	async getRootDir(){
 		return await this.getDir('' as DirID);
 	}
 
+	/**
+	 * Decrypts a file name
+	 * @param item Encrypted file
+	 * @param parent ID of the parent directory
+	 * @returns Decrypted file name as string
+	 * @throws DecryptionError If file name cannot be decrypted
+	 */
 	async decryptFileName(item: Item, parent: DirID): Promise<string>{
 		let name;
 		if(item.name.endsWith('.c9r')) name = item.name.slice(0, -4);
@@ -132,6 +155,11 @@ export class Vault {
 		return new TextDecoder().decode(decrypted);
 	}
 
+	/**
+	 * List all files, ready for decrypting contents
+	 * @param dirId ID of the directory
+	 * @returns Encrypted items in that directory
+	 */
 	async listItems(dirId: DirID){
 		const enc = await this.listEncrypted(dirId);
 		const pendingNameList: Promise<string>[] = [];

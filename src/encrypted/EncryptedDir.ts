@@ -10,6 +10,14 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 		this.type = 'd';
 	}
 
+	/**
+	 * Get the ID of this directory
+	 * @returns ID of this directory
+	 * 
+	 * Potential changes:
+	 * Cache this ID in this class
+	 * Add an option to get ID upon creating this object by using static async constructor
+	 */
 	async getDirId(){
 		return await this.vault.provider.readFileString(this.fullName + '/dir.c9r') as DirID;
 	}
