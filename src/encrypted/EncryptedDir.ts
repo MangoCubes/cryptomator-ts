@@ -9,4 +9,8 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 		super(vault, name, fullName, decryptedName, dirId, lastMod);
 		this.type = 'd';
 	}
+
+	async getDirId(){
+		return await this.vault.provider.readFileString(this.fullName + '/dir.c9r') as DirID;
+	}
 }

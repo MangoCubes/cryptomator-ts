@@ -4,7 +4,7 @@ import { EncryptedDir } from "./EncryptedDir";
 import { EncryptedFile } from "./EncryptedFile";
 
 export abstract class EncryptedItemBase implements ItemBase{
-	constructor(public vault: Vault, public name: string, public fullName: ItemPath, public decryptedName: string, public dirId: DirID, public lastMod: Date){
+	constructor(public vault: Vault, public name: string, public fullName: ItemPath, public decryptedName: string, public parentId: DirID, public lastMod: Date){
 
 	}
 }

@@ -7,8 +7,8 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 	type: 'f';
 	size: number;
 
-	constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, dirId: DirID, lastMod: Date, size: number){
-		super(vault, name, fullName, decryptedName, dirId, lastMod);
+	constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, parentId: DirID, lastMod: Date, size: number){
+		super(vault, name, fullName, decryptedName, parentId, lastMod);
 		this.size = size;
 		this.type = 'f';
 	}
