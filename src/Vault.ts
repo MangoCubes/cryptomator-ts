@@ -32,7 +32,7 @@ type Masterkey = {
 
 export class Vault {
 
-	constructor(public provider: DataProvider, public dir: string, public name: string | null, private encKey: EncryptionKey, private macKey: MACKey, private siv: SIV){
+	constructor(public provider: DataProvider, public dir: string, public name: string | null, public encKey: EncryptionKey, private macKey: MACKey, private siv: SIV){
 		
 	}
 
@@ -133,7 +133,7 @@ export class Vault {
 		for(const item of enc) pendingNameList.push(this.decryptFileName(item, '' as DirID));
 		const names = await Promise.all(pendingNameList);
 		const items: EncryptedItem[] = [];
-		for(let i = 0; i < enc.length; i++) items.push(new EncryptedItem(enc[i].name, names[i], dirId, enc[i].type, enc[i].lastMod, enc[i].size, enc[i].fullName));
+		for(let i = 0; i < enc.length; i++) items.push(new EncryptedItem(this, enc[i].name, enc[i].fullName, names[i], dirId, enc[i].type, enc[i].lastMod, enc[i].size));
 		return items;
 	}
 }
