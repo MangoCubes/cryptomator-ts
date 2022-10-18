@@ -5,7 +5,7 @@ import { scrypt } from "scrypt-js";
 import { DataProvider } from "./DataProvider";
 import { Base64Str, DirID, EncryptionKey, Item, MACKey } from "./types";
 import { base64url, jwtVerify } from "jose";
-import { DecryptionError, DecryptionTarget, InvalidVaultError } from "./Errors";
+import { DecryptionError, DecryptionTarget, InvalidSignatureError } from "./Errors";
 import { EncryptedItem } from "./EncryptedItem";
 
 type VaultConfigHeader = {
@@ -32,7 +32,7 @@ type Masterkey = {
 
 export class Vault {
 
-	constructor(public provider: DataProvider, public dir: string, public name: string | null, public encKey: EncryptionKey, private macKey: MACKey, private siv: SIV){
+	constructor(public provider: DataProvider, public dir: string, public name: string | null, public encKey: EncryptionKey, public macKey: MACKey, private siv: SIV){
 		
 	}
 
@@ -79,9 +79,12 @@ export class Vault {
 			base64Decode(mk.hmacMasterKey),
 			kek,
 			'AES-KW',
-			'AES-CTR',
+			{
+				name: 'HMAC',
+				hash: {name: 'SHA-256'}
+			},
 			true,
-			[]
+			['sign']
 		) as MACKey;
 		const extractedMac = new Uint8Array(await crypto.subtle.exportKey('raw', macKey));
 		const buffer = new Uint8Array(64);
@@ -95,7 +98,7 @@ export class Vault {
 		try {
 			jwtVerify(token, new Uint8Array(buffer));
 		} catch(e) {
-			throw new InvalidVaultError();
+			throw new InvalidSignatureError(DecryptionTarget.Vault);
 		}
 		buffer.fill(0);
 		return new Vault(provider, dir, name, encKey, macKey, siv);
@@ -123,7 +126,7 @@ export class Vault {
 		if(item.name.endsWith('.c9r')) name = item.name.slice(0, -4);
 		else name = item.name;
 		const decrypted = this.siv.open([new TextEncoder().encode(parent)], base64url.decode(name));
-		if(decrypted === null) throw new DecryptionError(DecryptionTarget.Filename, item);
+		if(decrypted === null) throw new DecryptionError(DecryptionTarget.ItemName, item);
 		return new TextDecoder().decode(decrypted);
 	}
 

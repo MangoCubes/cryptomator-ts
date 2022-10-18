@@ -1,22 +1,27 @@
 import { Item } from "./types";
 
 export enum DecryptionTarget {
-	Filename,
-	Item,
+	ItemName,
+	File,
+	Directory,
 	Vault
 }
 
-export class InvalidVaultError extends Error{
-	
+export class InvalidSignatureError<T extends DecryptionTarget.File | DecryptionTarget.Vault> extends Error{
+	constructor(public type: T){
+		super();
+	}
 }
 
 type DecErrMap = {
-	[DecryptionTarget.Filename]: Item;
-	[DecryptionTarget.Item]: Item;
+	[DecryptionTarget.ItemName]: Item;
+	[DecryptionTarget.File]: Item & {type: 'f'};
 	[DecryptionTarget.Vault]: null;
 };
-
-export class DecryptionError<T extends DecryptionTarget> extends Error{
+/**
+ * Indicates wrong password
+ */
+export class DecryptionError<T extends Exclude<DecryptionTarget, DecryptionTarget.Directory>> extends Error{
 	constructor(public type: T, public target: DecErrMap[T]){
 		super();
 	}
