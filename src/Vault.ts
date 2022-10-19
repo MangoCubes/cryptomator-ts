@@ -113,7 +113,7 @@ export class Vault {
 		extractedMac.fill(0);
 		extractedEnc.fill(0);
 		try {
-			jwtVerify(token, new Uint8Array(buffer));
+			await jwtVerify(token, new Uint8Array(buffer));
 		} catch(e) {
 			throw new InvalidSignatureError(DecryptionTarget.Vault);
 		}

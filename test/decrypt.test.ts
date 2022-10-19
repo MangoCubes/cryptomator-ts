@@ -2,11 +2,14 @@ import { describe, expect, test } from '@jest/globals';
 import path from "path";
 import { Vault } from '../src/Vault';
 import { LocalStorageProvider } from '../src/providers/LocalStorageProvider';
-import { DirID } from '../src/types';
+import { DirID, ItemPath } from '../src/types';
 import { EncryptedFile } from '../src/encrypted/EncryptedFile';
+import { InvalidSignatureError } from '../src/Errors';
 
-async function decrypt(provider: LocalStorageProvider, password: string): Promise<Vault>{
-	const v = await Vault.open(provider, path.resolve(__dirname, 'Test'), password, 'Test Vault');
+async function decrypt(provider: LocalStorageProvider, password: string, options?: {
+	vaultFile?: ItemPath
+}): Promise<Vault>{
+	const v = await Vault.open(provider, path.resolve(__dirname, 'Test'), password, 'Test Vault', options ? options : {vaultFile: path.resolve(__dirname, 'Test', 'vault-valid.cryptomator') as ItemPath});
 	return v;
 }
 
@@ -16,6 +19,10 @@ describe('Test opening an existing vault', () => {
 		await expect(decrypt(provider, 'qq11@11')).rejects.toThrowError();
 		await expect(decrypt(provider, '')).rejects.toThrowError();
 		await expect(decrypt(provider, 'qq11@@@11')).rejects.toThrowError();
+	});
+
+	test('Vault opening should fail if vault.cryptomator is invalid', async () => {
+		await expect(decrypt(provider, 'qq11@@11', {vaultFile: path.resolve(__dirname, 'Test', 'vault-corrupted.cryptomator') as ItemPath})).rejects.toThrowError(InvalidSignatureError);
 	});
 
 	test('Try opening a vault with a correct password', async () => {
@@ -55,11 +62,11 @@ describe('Test opening an existing vault', () => {
 		await expect(pendingContentKey).resolves.not.toThrowError();
 	});
 
-	test.only('Try decrypting a file', async () => {
-		const vault = await decrypt(provider, 'qq11@@11');
-		const items = await vault.listItems('8ef3bbd6-6f41-498a-a785-735c5b1b1f75' as DirID);
-		const firstFile = items.find(i => i.type === 'f');
-		const pendingContent = (firstFile! as EncryptedFile).decrypt();
-		await expect(pendingContent).resolves.not.toThrowError();
-	});
+	// test('Try decrypting a file', async () => {
+	// 	const vault = await decrypt(provider, 'qq11@@11');
+	// 	const items = await vault.listItems('8ef3bbd6-6f41-498a-a785-735c5b1b1f75' as DirID);
+	// 	const firstFile = items.find(i => i.type === 'f');
+	// 	const pendingContent = (firstFile! as EncryptedFile).decrypt();
+	// 	await expect(pendingContent).resolves.not.toThrowError();
+	// });
 });
