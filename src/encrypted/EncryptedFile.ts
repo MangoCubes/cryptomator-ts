@@ -72,11 +72,13 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		const payload = new Uint8Array(40 + ciphertextSize);
 		payload.set(header.nonce, 0);
 		const cCount = new Uint8Array(BigUint64Array.from([BigInt(chunkNumber)]).buffer);
+		cCount.reverse();
 		payload.set(cCount, 16);
 		payload.set(nonce, 24);
 		payload.set(data, 40);
 		const sig = new Uint8Array(await crypto.subtle.sign('HMAC', this.vault.macKey, payload));
-		if(!isEqual(hmac, sig)) throw new InvalidSignatureError(DecryptionTarget.File);
+		if(!isEqual(hmac, sig))
+			throw new InvalidSignatureError(DecryptionTarget.File);
 		// const content = await crypto.subtle.decrypt(
 		// 	{
 		// 		name: 'AES-CTR',
