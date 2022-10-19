@@ -21,3 +21,4 @@ export type DirID = string & {__type: 'DirID'};
 
 export type EncryptionKey = CryptoKey & {__type: 'EncryptionKey'};
 export type MACKey = CryptoKey & {__type: 'MACKey'};
+export type ContentKey = CryptoKey & {__type: 'ContentKey'}
