@@ -3,7 +3,7 @@ import { SIV } from "@stablelib/siv";
 import b32 from "base32-encoding";
 import { scrypt } from "scrypt-js";
 import { DataProvider } from "./DataProvider";
-import { Base64Str, DirID, EncryptionKey, Item, MACKey } from "./types";
+import { Base64Str, DirID, EncryptionKey, Item, ItemPath, MACKey } from "./types";
 import { base64url, jwtVerify } from "jose";
 import { DecryptionError, DecryptionTarget, InvalidSignatureError } from "./Errors";
 import { EncryptedItem } from "./encrypted/EncryptedItemBase";
@@ -45,6 +45,9 @@ export class Vault {
 	 * @param dir Directory of the vault that contains 'masterkey.cryptomator' and 'd' directory
 	 * @param password Password of the vault
 	 * @param name Name of the vault, may be null
+	 * @param options Various options to pass to decrypting vault
+	 * @param options.vaultFile: Absolute directory of the vault.cryptomator file
+	 * @param options.masterkeyFile: Absolute directory of the masterkey.cryptomator file
 	 * @throws DecryptionError if the given password is wrong
 	 * @throws InvalidSignatureError if the integrity of vault.cryptomator file cannot be verified
 	 * 
@@ -52,10 +55,19 @@ export class Vault {
 	 * Custom masterkey file
 	 * Custom vault.cryptomator file
 	 */
-	static async open(provider: DataProvider, dir: string, password: string, name: string | null) {
+	static async open(
+			provider: DataProvider,
+			dir: string,
+			password: string,
+			name: string | null,
+			options?: {
+				vaultFile?: ItemPath
+				masterkeyFile?: ItemPath
+			}
+		) {
 		if (dir.endsWith('/')) dir = dir.slice(0, -1);
-		const token = await provider.readFileString(dir + '/vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
-		const mk = JSON.parse(await provider.readFileString(dir + '/masterkey.cryptomator')) as Masterkey;
+		const token = await provider.readFileString(options?.vaultFile ? options.vaultFile : dir + '/vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
+		const mk = JSON.parse(await provider.readFileString(options?.masterkeyFile ? options.masterkeyFile : dir + '/masterkey.cryptomator')) as Masterkey;
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), base64Decode(mk.scryptSalt), mk.scryptCostParam, mk.scryptBlockSize, 1, 32);
 		let kek: CryptoKey;
 		try {
