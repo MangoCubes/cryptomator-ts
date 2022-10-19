@@ -8,9 +8,6 @@ type Header = {
 	nonce: Uint8Array;
 }
 
-const ciphertextSize = 32768;
-const chunkSize = ciphertextSize + 48;
-
 export class EncryptedFile extends EncryptedItemBase implements File{
 	type: 'f';
 	size: number;
@@ -66,9 +63,10 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 	}
 
 	async decryptChunk(header: Header, chunk: Uint8Array, chunkNumber: number){
+		const ciphertextSize = chunk.byteLength - 48; //Whole block - 16 byte nonce - 32 byte MAC
 		const nonce = chunk.slice(0, 16);
-		const data = chunk.slice(16, ciphertextSize + 16);
-		const hmac = chunk.slice(ciphertextSize + 16, chunkSize);
+		const data = chunk.slice(16, ciphertextSize + 16); //32784
+		const hmac = chunk.slice(ciphertextSize + 16, chunk.byteLength); //32816
 		const payload = new Uint8Array(40 + ciphertextSize);
 		payload.set(header.nonce, 0);
 		const cCount = new Uint8Array(BigUint64Array.from([BigInt(chunkNumber)]).buffer);
@@ -93,6 +91,7 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 	async decrypt(){
 		const fileData = await this.readEncryptedFile();
 		const header = await this.decryptHeader(fileData);
+		const chunkSize = 32768 + 48; // 32KiB + 48 bytes
 		for(let i = 0; i * chunkSize + 88 < fileData.byteLength; i++){
 			const chunk = fileData.slice(i * chunkSize + 88, (i + 1) * chunkSize + 88);
 			await this.decryptChunk(header, chunk, i);

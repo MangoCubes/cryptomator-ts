@@ -62,11 +62,11 @@ describe('Test opening an existing vault', () => {
 		await expect(pendingContentKey).resolves.not.toThrowError();
 	});
 
-	// test('Try decrypting a file', async () => {
-	// 	const vault = await decrypt(provider, 'qq11@@11');
-	// 	const items = await vault.listItems('8ef3bbd6-6f41-498a-a785-735c5b1b1f75' as DirID);
-	// 	const firstFile = items.find(i => i.type === 'f');
-	// 	const pendingContent = (firstFile! as EncryptedFile).decrypt();
-	// 	await expect(pendingContent).resolves.not.toThrowError();
-	// });
+	test('Try decrypting a file', async () => {
+		const vault = await decrypt(provider, 'qq11@@11');
+		const items = await vault.listItems('8ef3bbd6-6f41-498a-a785-735c5b1b1f75' as DirID);
+		const firstFile = items.find(i => i.type === 'f');
+		const pendingContent = (firstFile! as EncryptedFile).decrypt();
+		await expect(pendingContent).resolves.not.toThrowError();
+	});
 });
