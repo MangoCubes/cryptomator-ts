@@ -31,12 +31,57 @@ type Masterkey = {
 	scryptSalt: Base64Str;
 	versionMac: Base64Str;
 }
+
+type CreateVaultOpts = ({
+	/**
+	 * Name of this vault.
+	 * If set, a subdirectory with this name will be created under the specified folder.
+	 */
+	name: string;
+} | {
+	name: null;
+	/**
+	 * If true, the vault will be created created directly in the supplied directory.
+	 * In other words, the vault.cryptomator and masterkey.cryptomator will be created in the specified directory.
+	 */
+	createHere: true;
+}) & Partial<{
+	/**
+	 * Currently, other versions are not supported.
+	 */
+	format: 8;
+	/**
+	 * Shortening threshold is currently hardcoded to 220, the default for official Cryptomator softwares.
+	 */
+	shorteningThreshold: 220;
+}>
+
+
 /**
  * Cryptomator vault object
  */
 export class Vault {
 	private constructor(public provider: DataProvider, public dir: string, public name: string | null, public encKey: EncryptionKey, public macKey: MACKey, private siv: SIV){
 		
+	}
+
+	/**
+	 * Create a vault.
+	 * @param provider File system provider
+	 * @param dir Directory to create this vault
+	 * @param password Vault password
+	 * @param options Vault options, check type properties for more information
+	 * 
+	 * Currently, custom masterkey.cryptomator location and algorithm other than HS256 is not supported.
+	 * As a result, vault.cryptomator's decoded header will always be the same.
+	 */
+	static async create(
+		provider: DataProvider,
+		dir: string,
+		password: string,
+		options: CreateVaultOpts
+	) {
+		if (dir.endsWith('/')) dir = dir.slice(0, -1);
 	}
 
 	/**
