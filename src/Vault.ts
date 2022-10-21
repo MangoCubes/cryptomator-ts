@@ -168,6 +168,11 @@ export class Vault {
 		return new TextDecoder().decode(decrypted);
 	}
 
+	 async encryptFileName(name: string, parent: DirID): Promise<string>{
+		const encrypted = this.siv.seal([new TextEncoder().encode(parent)], new TextEncoder().encode(name));
+		return base64url.encode(encrypted);
+	}
+
 	/**
 	 * List all files, ready for decrypting contents
 	 * @param dirId ID of the directory
@@ -185,6 +190,15 @@ export class Vault {
 			if(item.type === 'f') items.push(new EncryptedFile(this, item.name, item.fullName, names[i], dirId, item.lastMod, item.size));
 		}
 		return items;
+	}
+
+	async createDirectory(name: string, parent: DirID){
+		const dirId = crypto.randomUUID() as DirID;
+		const encDir = await this.getDir(dirId);
+		const dir = `${encDir}/${await this.encryptFileName(name, parent)}.c9r`;
+		await this.provider.createDir(dir, true);
+		await this.provider.writeFileString(`${dir}/dir.c9r`, dirId);
+		return dirId;
 	}
 }
 
