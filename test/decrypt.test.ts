@@ -64,10 +64,15 @@ describe('Test opening an existing vault', () => {
 
 	test('Try decrypting a file', async () => {
 		const vault = await decrypt(provider, 'qq11@@11');
-		const items = await vault.listItems('8ef3bbd6-6f41-498a-a785-735c5b1b1f75' as DirID);
+		const items = await vault.listItems('' as DirID);
 		const firstFile = items.filter(i => i.type === 'f') as EncryptedFile[];
-		const pendingContent = firstFile[1].decrypt();
-		await expect(pendingContent).resolves.not.toThrowError();
-		provider.writeFile(path.resolve(__dirname, 'Test', 'Output.epub'), await pendingContent);
+		const decrypted = await firstFile[0].decryptAsString()
+		const decryptedFile = path.resolve(__dirname, 'Test', decrypted.title);
+		await provider.writeFileString(decryptedFile, decrypted.content);
+		const read = async () => {
+			const str = await provider.readFileString(decryptedFile);
+			return str.includes('Cryptomator');
+		}
+		await expect(read()).resolves.toBe(true);
 	});
 });

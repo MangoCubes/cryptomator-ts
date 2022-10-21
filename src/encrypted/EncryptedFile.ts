@@ -86,7 +86,7 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		));
 	}
 
-	async decrypt(){
+	async decryptContent(){
 		const fileData = await this.readEncryptedFile();
 		const header = await this.decryptHeader(fileData);
 		const chunkSize = 32768 + 48; // 32KiB + 48 bytes
@@ -96,6 +96,20 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 			decrypted = concat(decrypted, await this.decryptChunk(header, chunk, i));
 		}
 		return decrypted;
+	}
+
+	async decrypt(){
+		return {
+			title: this.decryptedName,
+			content: await this.decryptContent()
+		};
+	}
+
+	async decryptAsString(){
+		return {
+			title: this.decryptedName,
+			content: new TextDecoder().decode(await this.decryptContent())
+		};
 	}
 }
 
