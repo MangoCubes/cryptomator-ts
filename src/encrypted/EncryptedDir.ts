@@ -15,6 +15,7 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 	 * @param parent Directory ID of the parent folder
 	 * @param lastMod Last modification date
 	 * @param options.cacheDirId If true, the ID of the directory will be queried, and cached into the object.
+	 * @param options.dirId If set, this ID will be cached and used. Do not set this if it is wrong.
 	 * @returns EncryptedDir object
 	 */
 	static async open(
@@ -25,11 +26,13 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 		parent: DirID,
 		lastMod: Date,
 		options?: {
-			cacheDirId?: boolean
+			cacheDirId?: boolean,
+			dirId?: DirID
 		}
 	){
 		let dirId: DirID | null = null;
-		if(options?.cacheDirId) dirId = await vault.provider.readFileString(fullName + '/dir.c9r') as DirID;
+		if(options?.dirId) dirId = options.dirId;
+		else if(options?.cacheDirId) dirId = await vault.provider.readFileString(fullName + '/dir.c9r') as DirID;
 		return new EncryptedDir(vault, name, fullName, decryptedName, parent, lastMod, dirId);
 	}
 
@@ -41,12 +44,13 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 
 	/**
 	 * Get the ID of this directory
+	 * @param clearCache Query the provider to get updated directory ID.
 	 * @returns ID of this directory
 	 * 
 	 * Calling this method will cache ID if it is not already.
 	 */
-	async getDirId(){
-		if(!this.dirId) this.dirId = await this.vault.provider.readFileString(this.fullName + '/dir.c9r') as DirID;
+	async getDirId(clearCache?: true){
+		if(clearCache || !this.dirId) this.dirId = await this.vault.provider.readFileString(this.fullName + '/dir.c9r') as DirID;
 		return this.dirId;
 	}
 
@@ -56,5 +60,9 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 	 */
 	async listItems(){
 		return await this.vault.listItems(await this.getDirId());
+	}
+
+	async createDirectory(name: string){
+
 	}
 }
