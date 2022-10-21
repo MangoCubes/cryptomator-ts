@@ -57,10 +57,22 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		};
 	}
 
+	/**
+	 * Read the encrypted file in binary
+	 * @returns Uint8array of the encrypted file content
+	 */
 	async readEncryptedFile(){
 		return await this.vault.provider.readFile(this.fullName);
 	}
 
+	/**
+	 * Decrypt a chunk
+	 * @param header Header object that contains file nonce and content key
+	 * @param chunk Encrypted chunk
+	 * @param chunkNumber The chunk number
+	 * @returns Decrypted chunk in Uint8Array
+	 * @throws InvalidSignatureError if the HMAC signature verification fails
+	 */
 	async decryptChunk(header: Header, chunk: Uint8Array, chunkNumber: number){
 		const ciphertextSize = chunk.byteLength - 48; //Whole block - 16 byte nonce - 32 byte MAC
 		const nonce = chunk.slice(0, 16);
@@ -86,6 +98,10 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		));
 	}
 
+	/**
+	 * Decrypt file content
+	 * @returns Decrypted file content in Uint8Array
+	 */
 	async decryptContent(){
 		const fileData = await this.readEncryptedFile();
 		const header = await this.decryptHeader(fileData);
@@ -98,6 +114,10 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		return decrypted;
 	}
 
+	/**
+	 * Wrapper function for decryptContent that returns name and content
+	 * @returns An object with two properties, title and content (Uint8Array)
+	 */
 	async decrypt(){
 		return {
 			title: this.decryptedName,
@@ -105,6 +125,10 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		};
 	}
 
+	/**
+	 * Wrapper function for decryptContent that returns name and content converted into string
+	 * @returns An object with two properties, title and content (string)
+	 */
 	async decryptAsString(){
 		return {
 			title: this.decryptedName,

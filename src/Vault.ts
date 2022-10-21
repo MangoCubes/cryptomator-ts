@@ -35,7 +35,7 @@ type Masterkey = {
  * Cryptomator vault object
  */
 export class Vault {
-	constructor(public provider: DataProvider, public dir: string, public name: string | null, public encKey: EncryptionKey, public macKey: MACKey, private siv: SIV){
+	private constructor(public provider: DataProvider, public dir: string, public name: string | null, public encKey: EncryptionKey, public macKey: MACKey, private siv: SIV){
 		
 	}
 
@@ -146,6 +146,7 @@ export class Vault {
 
 	/**
 	 * Get directory of the root directory
+	 * @returns Encrypted directory that corresponds to the root directory (Directory with ID of "")
 	 */
 	async getRootDir(){
 		return await this.getDir('' as DirID);
