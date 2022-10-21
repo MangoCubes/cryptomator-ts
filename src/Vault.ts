@@ -180,7 +180,7 @@ export class Vault {
 		const items: EncryptedItem[] = [];
 		for(let i = 0; i < enc.length; i++) {
 			const item = enc[i];
-			if(item.type === 'd') items.push(new EncryptedDir(this, item.name, item.fullName, names[i], dirId, item.lastMod));
+			if(item.type === 'd') items.push(await EncryptedDir.open(this, item.name, item.fullName, names[i], dirId, item.lastMod));
 			if(item.type === 'f') items.push(new EncryptedFile(this, item.name, item.fullName, names[i], dirId, item.lastMod, item.size));
 		}
 		return items;

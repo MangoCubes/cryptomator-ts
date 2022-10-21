@@ -29,11 +29,6 @@ describe('Test opening an existing vault', () => {
 		await expect(decrypt(provider, 'qq11@@11')).resolves.not.toThrowError();
 	});
 
-	test('Testing root directory id generation', async () => {
-		const vault = await decrypt(provider, 'qq11@@11');
-		await expect(vault.getRootDir()).resolves.not.toThrowError();
-	});
-
 	test('Try listing encrypted items in root', async () => {
 		const vault = await decrypt(provider, 'qq11@@11');
 		await expect(vault.listEncrypted('' as DirID)).resolves.not.toThrowError();
@@ -65,8 +60,8 @@ describe('Test opening an existing vault', () => {
 	test('Try decrypting a file', async () => {
 		const vault = await decrypt(provider, 'qq11@@11');
 		const items = await vault.listItems('' as DirID);
-		const firstFile = items.filter(i => i.type === 'f') as EncryptedFile[];
-		const decrypted = await firstFile[0].decryptAsString()
+		const firstFile = items.find(i => i.decryptedName === 'WELCOME.rtf') as EncryptedFile;
+		const decrypted = await firstFile.decryptAsString();
 		const decryptedFile = path.resolve(__dirname, 'Test', decrypted.title);
 		await provider.writeFileString(decryptedFile, decrypted.content);
 		const read = async () => {
