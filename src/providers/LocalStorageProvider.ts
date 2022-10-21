@@ -4,12 +4,18 @@ import { promises as fs } from "fs";
 import * as p from "path";
 
 export class LocalStorageProvider implements DataProvider{
+	async writeFileString(path: string, content: string){
+		await fs.writeFile(path, content);
+	}
+
 	async readFile(path: string): Promise<Uint8Array>{
 		return new Uint8Array(await fs.readFile(path));
 	}
+
 	async readFileString (path: string): Promise<string>{
 		return await fs.readFile(path, 'utf-8');
 	}
+
 	async listItems (path: string): Promise<Item[]>{
 		const names = await fs.readdir(path);
 		const items: Item[] = [];
@@ -25,7 +31,8 @@ export class LocalStorageProvider implements DataProvider{
 			});
 		}
 		return items;
-	};
+	}
+
 	async writeFile(path: string, data: Uint8Array){
 		await fs.writeFile(path, data);
 	}
