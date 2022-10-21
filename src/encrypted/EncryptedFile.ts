@@ -27,26 +27,25 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		if(!data) data = await this.readEncryptedFile();
 		const payload = data.slice(0, 56);
 		const nonce = data.slice(0, 16);
-		// const allOne = data.slice(16, 24);
-		const encContentKey = data.slice(24, 56);
+		const encContentKey = data.slice(16, 56);
 		const hmac = data.slice(56, 88);
 
 		const sig = new Uint8Array(await crypto.subtle.sign('HMAC', this.vault.macKey, payload));
 		if(!isEqual(hmac, sig)) throw new InvalidSignatureError(DecryptionTarget.File);
 
-		const exportedContentKey = await crypto.subtle.decrypt(
+		const exportedContentKey = new Uint8Array(await crypto.subtle.decrypt(
 			{
 				name: 'AES-CTR',
 				counter: nonce,
-				length: 64
+				length: 32
 			},
 			this.vault.encKey,
 			encContentKey
-		);
+		));
 
 		const contentKey = await crypto.subtle.importKey(
 			'raw',
-			exportedContentKey,
+			exportedContentKey.slice(8),
 			'AES-CTR',
 			false,
 			['encrypt', 'decrypt']
@@ -75,27 +74,28 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		payload.set(nonce, 24);
 		payload.set(data, 40);
 		const sig = new Uint8Array(await crypto.subtle.sign('HMAC', this.vault.macKey, payload));
-		if(!isEqual(hmac, sig))
-			throw new InvalidSignatureError(DecryptionTarget.File);
-		// const content = await crypto.subtle.decrypt(
-		// 	{
-		// 		name: 'AES-CTR',
-		// 		counter: nonce,
-		// 		length: 64
-		// 	},
-		// 	this.vault.encKey,
-		// 	encContentKey
-		// );
+		if(!isEqual(hmac, sig)) throw new InvalidSignatureError(DecryptionTarget.File);
+		return new Uint8Array(await crypto.subtle.decrypt(
+			{
+				name: 'AES-CTR',
+				counter: nonce,
+				length: 32
+			},
+			header.contentKey,
+			data
+		));
 	}
 
 	async decrypt(){
 		const fileData = await this.readEncryptedFile();
 		const header = await this.decryptHeader(fileData);
 		const chunkSize = 32768 + 48; // 32KiB + 48 bytes
+		let decrypted = new Uint8Array();
 		for(let i = 0; i * chunkSize + 88 < fileData.byteLength; i++){
 			const chunk = fileData.slice(i * chunkSize + 88, (i + 1) * chunkSize + 88);
-			await this.decryptChunk(header, chunk, i);
+			decrypted = concat(decrypted, await this.decryptChunk(header, chunk, i));
 		}
+		return decrypted;
 	}
 }
 
@@ -103,4 +103,11 @@ function isEqual(a: Uint8Array, b: Uint8Array){
 	if(a.byteLength !== b.byteLength) return false;
 	if(a.every((v, i) => v === b[i])) return true;
 	else return false;
+}
+
+function concat(a: Uint8Array, b: Uint8Array){
+	const ret = new Uint8Array(a.length + b.length);
+	ret.set(a, 0);
+	ret.set(b, a.length);
+	return ret;
 }
