@@ -4,6 +4,10 @@ import { promises as fs } from "fs";
 import * as p from "path";
 
 export class LocalStorageProvider implements DataProvider{
+	async createDir(path: string, recursive?: boolean | undefined): Promise<void>{
+		await fs.mkdir(path, {recursive: recursive});
+	}
+
 	async writeFileString(path: string, content: string){
 		await fs.writeFile(path, content);
 	}
