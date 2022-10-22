@@ -81,6 +81,7 @@ export class Vault {
 	 * @param dir Directory to create this vault
 	 * @param password Vault password
 	 * @param options Vault options, check type properties for more information
+	 * @returns The vault object for the newly created vault
 	 * 
 	 * Currently, custom masterkey.cryptomator location and algorithm other than HS256 is not supported.
 	 * As a result, vault.cryptomator's decoded header will always be the same.
@@ -177,10 +178,6 @@ export class Vault {
 	 * @param options.masterkeyFile: Absolute directory of the masterkey.cryptomator file
 	 * @throws DecryptionError if the given password is wrong
 	 * @throws InvalidSignatureError if the integrity of vault.cryptomator file cannot be verified
-	 * 
-	 * Potential options later on:
-	 * Custom masterkey file
-	 * Custom vault.cryptomator file
 	 */
 	static async open(
 			provider: DataProvider,
@@ -296,7 +293,13 @@ export class Vault {
 		return new TextDecoder().decode(decrypted);
 	}
 
-	 async encryptFileName(name: string, parent: DirID): Promise<string>{
+	/**
+	 * Return an encrypted file name
+	 * @param name Original name of the file
+	 * @param parent Directory ID of the parent folder
+	 * @returns Encrypted file name
+	 */
+	async encryptFileName(name: string, parent: DirID): Promise<string>{
 		const encrypted = this.siv.seal([new TextEncoder().encode(parent)], new TextEncoder().encode(name));
 		return base64url.encode(encrypted);
 	}
@@ -320,6 +323,12 @@ export class Vault {
 		return items;
 	}
 
+	/**
+	 * Create a directory under a given directory ID
+	 * @param name Name of the folder
+	 * @param parent Directory ID of the parent folder
+	 * @returns Directory ID of the new folder
+	 */
 	async createDirectory(name: string, parent: DirID){
 		const dirId = crypto.randomUUID() as DirID;
 		const encDir = await this.getDir(dirId);
