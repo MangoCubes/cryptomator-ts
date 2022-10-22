@@ -142,11 +142,15 @@ export class Vault {
 			shorteningThreshold: options.shorteningThreshold ?? 220,
 			jti: crypto.randomUUID(),
 			cipherCombo: 'SIV_CTRMAC'
+		}).setProtectedHeader({
+			alg: 'HS256',
+			kid: 'masterkeyfile:masterkey.cryptomator',
+			typ: 'JWT'
 		}).sign(jwtKey);
 		jwtKey.fill(0);
 
-		// await provider.writeFileString(`${dir}/masterkey.cryptomator`, JSON.stringify(mk));
-		await provider.writeFileString(`${dir}/masterkey.cryptomator`, vaultFile);
+		await provider.writeFileString(`${dir}/masterkey.cryptomator`, JSON.stringify(mk));
+		await provider.writeFileString(`${dir}/vault.cryptomator`, vaultFile);
 		await provider.createDir(`${dir}/d`);
 	}
 
