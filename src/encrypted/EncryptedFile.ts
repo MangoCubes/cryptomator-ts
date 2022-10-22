@@ -62,13 +62,14 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 			vault.encKey,
 			payload
 		));
-		const sig = new Uint8Array(await crypto.subtle.sign('HMAC', vault.macKey, encPayload));
-		const encHeader = new Uint8Array(88);
-		encHeader.set(nonce, 0);
-		encHeader.set(encPayload, 16);
-		encHeader.set(sig, 56);
+		
+		
+		let encrypted = new Uint8Array(88);
+		encrypted.set(nonce, 0);
+		encrypted.set(encPayload, 16);
+		const sig = new Uint8Array(await crypto.subtle.sign('HMAC', vault.macKey, encrypted.slice(0, 56)));
+		encrypted.set(sig, 56);
 		const chunkSize = 32768; // 32KiB
-		let encrypted = new Uint8Array();
 		for(let i = 0; i * chunkSize < content.byteLength; i++){
 			const chunk = content.slice(i * chunkSize, (i + 1) * chunkSize);
 			encrypted = concat(encrypted, await EncryptedFile.encryptChunk(vault, {
