@@ -102,7 +102,6 @@ export class Vault {
 		const jwtKey = new Uint8Array(64);
 		jwtKey.set(encKeyBuffer, 0);
 		jwtKey.set(macKeyBuffer, 32);
-		macKeyBuffer.fill(0);
 
 		const kek = await crypto.subtle.importKey('raw', kekBuffer, 'AES-KW', false, ['wrapKey']);
 		kekBuffer.fill(0);
@@ -113,6 +112,7 @@ export class Vault {
 		}, true, ['sign']);
 
 		encKeyBuffer.fill(0);
+		macKeyBuffer.fill(0);
 
 		const wrappedEncKey = new Uint8Array(await crypto.subtle.wrapKey(
 			'raw',
