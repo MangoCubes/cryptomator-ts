@@ -31,6 +31,7 @@ type Masterkey = {
 	scryptCostParam: number;
 	scryptSalt: string;
 	versionMac: string;
+	version: 999;
 }
 
 type CreateVaultOpts = ({
@@ -106,7 +107,7 @@ export class Vault {
 		const kek = await crypto.subtle.importKey('raw', kekBuffer, 'AES-KW', false, ['wrapKey']);
 		kekBuffer.fill(0);
 		const encKey = await crypto.subtle.importKey('raw', encKeyBuffer, 'AES-CTR', true, []);
-		const macKey = await crypto.subtle.importKey('raw', encKeyBuffer, {
+		const macKey = await crypto.subtle.importKey('raw', macKeyBuffer, {
 			name: 'HMAC',
 			hash: {name: 'SHA-256'}
 		}, true, ['sign']);
@@ -135,6 +136,7 @@ export class Vault {
 			scryptCostParam: sCostParam,
 			scryptSalt: Base64.fromUint8Array(salt),
 			versionMac: Base64.fromUint8Array(versionMac),
+			version: 999
 		}
 
 		const vaultFile = await new SignJWT({
