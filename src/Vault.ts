@@ -99,17 +99,21 @@ export class Vault {
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), salt, sCostParam, sBlockSize, 1, 32);
 		const encKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
 		const macKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
-		const jwtKey = new Uint8Array(64);
-		jwtKey.set(encKeyBuffer, 0);
-		jwtKey.set(macKeyBuffer, 32);
+		const buffer = new Uint8Array(64);
+		buffer.set(macKeyBuffer, 0);
+		buffer.set(encKeyBuffer, 32);
+		const siv = new SIV(AES, buffer);
+		buffer.set(encKeyBuffer, 0);
+		buffer.set(macKeyBuffer, 32);		
 
 		const kek = await crypto.subtle.importKey('raw', kekBuffer, 'AES-KW', false, ['wrapKey']);
 		kekBuffer.fill(0);
-		const encKey = await crypto.subtle.importKey('raw', encKeyBuffer, 'AES-CTR', true, []);
+		const encKey = await crypto.subtle.importKey('raw', encKeyBuffer, 'AES-CTR', true, ['encrypt', 'decrypt']) as EncryptionKey;
 		const macKey = await crypto.subtle.importKey('raw', macKeyBuffer, {
 			name: 'HMAC',
 			hash: {name: 'SHA-256'}
-		}, true, ['sign']);
+		}, true, ['sign']) as MACKey;
+		
 
 		encKeyBuffer.fill(0);
 		macKeyBuffer.fill(0);
@@ -148,12 +152,18 @@ export class Vault {
 			alg: 'HS256',
 			kid: 'masterkeyfile:masterkey.cryptomator',
 			typ: 'JWT'
-		}).sign(jwtKey);
-		jwtKey.fill(0);
+		}).sign(buffer);
+		buffer.fill(0);
 
 		await provider.writeFileString(`${dir}/masterkey.cryptomator`, JSON.stringify(mk));
 		await provider.writeFileString(`${dir}/vault.cryptomator`, vaultFile);
 		await provider.createDir(`${dir}/d`);
+
+		const vault = new Vault(provider, dir, options.name, encKey, macKey, siv);
+		const rootDir = await vault.getRootDir();
+		await provider.createDir(rootDir, true);
+
+		return vault;
 	}
 
 	/**
