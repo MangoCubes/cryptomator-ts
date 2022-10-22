@@ -96,6 +96,10 @@ export class Vault {
 		const sCostParam = options.scryptCostParam ?? 32768;
 		const format = options.format ?? 8;
 		if (dir.endsWith('/')) dir = dir.slice(0, -1);
+		if (options.name) {
+			dir = dir + '/' + options.name;
+			await provider.createDir(dir, true);
+		}
 		const salt = crypto.getRandomValues(new Uint8Array(32));
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), salt, sCostParam, sBlockSize, 1, 32);
 		const encKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
