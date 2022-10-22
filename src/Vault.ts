@@ -4,7 +4,7 @@ import b32 from "base32-encoding";
 import { scrypt } from "scrypt-js";
 import { DataProvider } from "./DataProvider";
 import { Base64Str, DirID, EncryptionKey, Item, ItemPath, MACKey } from "./types";
-import { base64url, jwtVerify } from "jose";
+import { base64url, jwtVerify, SignJWT } from "jose";
 import { DecryptionError, DecryptionTarget, InvalidSignatureError } from "./Errors";
 import { EncryptedItem } from "./encrypted/EncryptedItemBase";
 import { EncryptedDir } from "./encrypted/EncryptedDir";
@@ -54,6 +54,14 @@ type CreateVaultOpts = ({
 	 * Shortening threshold is currently hardcoded to 220, the default for official Cryptomator softwares.
 	 */
 	shorteningThreshold: 220;
+	/**
+	 * Defaults to 32768 as per recommendation specified at https://github.com/cryptomator/cryptomator/issues/611.
+	 */
+	scryptCostParam: number;
+	/**
+	 * Defaults to 8.
+	 */
+	scryptBlockSize: number;
 }>
 
 
@@ -81,7 +89,65 @@ export class Vault {
 		password: string,
 		options: CreateVaultOpts
 	) {
+		const sBlockSize = options.scryptBlockSize ?? 8;
+		const sCostParam = options.scryptCostParam ?? 32768;
+		const format = options.format ?? 8;
 		if (dir.endsWith('/')) dir = dir.slice(0, -1);
+		const salt = crypto.getRandomValues(new Uint8Array(32));
+		const kekBuffer = await scrypt(new TextEncoder().encode(password), salt, sCostParam, sBlockSize, 1, 32);
+		const encKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
+		const macKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
+		const jwtKey = new Uint8Array(64);
+		jwtKey.set(encKeyBuffer, 0);
+		jwtKey.set(macKeyBuffer, 32);
+		macKeyBuffer.fill(0);
+
+		const kek = await crypto.subtle.importKey('raw', kekBuffer, 'AES-KW', false, ['wrapKey']);
+		kekBuffer.fill(0);
+		const encKey = await crypto.subtle.importKey('raw', encKeyBuffer, 'AES-CTR', true, []);
+		const macKey = await crypto.subtle.importKey('raw', encKeyBuffer, {
+			name: 'HMAC',
+			hash: {name: 'SHA-256'}
+		}, true, ['sign']);
+
+		encKeyBuffer.fill(0);
+
+		const wrappedEncKey = new Uint8Array(await crypto.subtle.wrapKey(
+			'raw',
+			encKey,
+			kek,
+			'AES-KW'
+		));
+
+		const wrappedMacKey = new Uint8Array(await crypto.subtle.wrapKey(
+			'raw',
+			macKey,
+			kek,
+			'AES-KW'
+		));
+
+		const versionMac = new Uint8Array(await crypto.subtle.sign('HMAC', macKey, new TextEncoder().encode(`${format}`)));
+		
+		const mk: Masterkey = {
+			primaryMasterKey: base64Encode(wrappedEncKey),
+			hmacMasterKey: base64Encode(wrappedMacKey),
+			scryptBlockSize: sBlockSize,
+			scryptCostParam: sCostParam,
+			scryptSalt: base64Encode(salt),
+			versionMac: base64Encode(versionMac),
+		}
+
+		const vaultFile = await new SignJWT({
+			format: format,
+			shorteningThreshold: options.shorteningThreshold ?? 220,
+			jti: crypto.randomUUID(),
+			cipherCombo: 'SIV_CTRMAC'
+		}).sign(jwtKey);
+		jwtKey.fill(0);
+
+		await provider.writeFileString(`${dir}/masterkey.cryptomator`, JSON.stringify(mk));
+		await provider.writeFileString(`${dir}/masterkey.cryptomator`, vaultFile);
+		await provider.createDir(`${dir}/d`);
 	}
 
 	/**
@@ -126,6 +192,7 @@ export class Vault {
 		} catch(e) {
 			throw new DecryptionError(DecryptionTarget.Vault, null);
 		}
+		kekBuffer.fill(0);
 		const encKey = await crypto.subtle.unwrapKey(
 			'raw',
 			base64Decode(mk.primaryMasterKey),
@@ -158,7 +225,7 @@ export class Vault {
 		extractedMac.fill(0);
 		extractedEnc.fill(0);
 		try {
-			await jwtVerify(token, new Uint8Array(buffer));
+			await jwtVerify(token, buffer);
 		} catch(e) {
 			throw new InvalidSignatureError(DecryptionTarget.Vault);
 		}
@@ -252,4 +319,8 @@ function base64Decode(encoded: Base64Str): Uint8Array {
     let bytes = new Uint8Array(decoded.length);
     for (var i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
     return bytes;
+}
+
+function base64Encode(bin: Uint8Array): Base64Str {
+	return btoa(new TextDecoder('utf8').decode(bin)) as Base64Str;
 }
