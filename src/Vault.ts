@@ -3,12 +3,13 @@ import { SIV } from "@stablelib/siv";
 import b32 from "base32-encoding";
 import { scrypt } from "scrypt-js";
 import { DataProvider } from "./DataProvider";
-import { Base64Str, DirID, EncryptionKey, Item, ItemPath, MACKey } from "./types";
+import { DirID, EncryptionKey, Item, ItemPath, MACKey } from "./types";
 import { base64url, jwtVerify, SignJWT } from "jose";
 import { DecryptionError, DecryptionTarget, InvalidSignatureError } from "./Errors";
 import { EncryptedItem } from "./encrypted/EncryptedItemBase";
 import { EncryptedDir } from "./encrypted/EncryptedDir";
 import { EncryptedFile } from "./encrypted/EncryptedFile";
+import Base64 from "js-base64";
 
 type VaultConfigHeader = {
 	kid: string;
@@ -24,12 +25,12 @@ type VaultConfig = {
 }
 
 type Masterkey = {
-	primaryMasterKey: Base64Str;
-	hmacMasterKey: Base64Str;
+	primaryMasterKey: string;
+	hmacMasterKey: string;
 	scryptBlockSize: number;
 	scryptCostParam: number;
-	scryptSalt: Base64Str;
-	versionMac: Base64Str;
+	scryptSalt: string;
+	versionMac: string;
 }
 
 type CreateVaultOpts = ({
@@ -127,14 +128,13 @@ export class Vault {
 		));
 
 		const versionMac = new Uint8Array(await crypto.subtle.sign('HMAC', macKey, new TextEncoder().encode(`${format}`)));
-		
 		const mk: Masterkey = {
-			primaryMasterKey: base64Encode(wrappedEncKey),
-			hmacMasterKey: base64Encode(wrappedMacKey),
+			primaryMasterKey: Base64.fromUint8Array(wrappedEncKey),
+			hmacMasterKey: Base64.fromUint8Array(wrappedMacKey),
 			scryptBlockSize: sBlockSize,
 			scryptCostParam: sCostParam,
-			scryptSalt: base64Encode(salt),
-			versionMac: base64Encode(versionMac),
+			scryptSalt: Base64.fromUint8Array(salt),
+			versionMac: Base64.fromUint8Array(versionMac),
 		}
 
 		const vaultFile = await new SignJWT({
@@ -145,7 +145,7 @@ export class Vault {
 		}).sign(jwtKey);
 		jwtKey.fill(0);
 
-		await provider.writeFileString(`${dir}/masterkey.cryptomator`, JSON.stringify(mk));
+		// await provider.writeFileString(`${dir}/masterkey.cryptomator`, JSON.stringify(mk));
 		await provider.writeFileString(`${dir}/masterkey.cryptomator`, vaultFile);
 		await provider.createDir(`${dir}/d`);
 	}
@@ -179,7 +179,7 @@ export class Vault {
 		if (dir.endsWith('/')) dir = dir.slice(0, -1);
 		const token = await provider.readFileString(options?.vaultFile ? options.vaultFile : dir + '/vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
 		const mk = JSON.parse(await provider.readFileString(options?.masterkeyFile ? options.masterkeyFile : dir + '/masterkey.cryptomator')) as Masterkey;
-		const kekBuffer = await scrypt(new TextEncoder().encode(password), base64Decode(mk.scryptSalt), mk.scryptCostParam, mk.scryptBlockSize, 1, 32);
+		const kekBuffer = await scrypt(new TextEncoder().encode(password), Base64.toUint8Array(mk.scryptSalt), mk.scryptCostParam, mk.scryptBlockSize, 1, 32);
 		let kek: CryptoKey;
 		try {
 			kek = await crypto.subtle.importKey(
@@ -195,7 +195,7 @@ export class Vault {
 		kekBuffer.fill(0);
 		const encKey = await crypto.subtle.unwrapKey(
 			'raw',
-			base64Decode(mk.primaryMasterKey),
+			Base64.toUint8Array(mk.primaryMasterKey),
 			kek,
 			'AES-KW',
 			'AES-CTR',
@@ -205,7 +205,7 @@ export class Vault {
 		const extractedEnc = new Uint8Array(await crypto.subtle.exportKey('raw', encKey));
 		const macKey = await crypto.subtle.unwrapKey(
 			'raw',
-			base64Decode(mk.hmacMasterKey),
+			Base64.toUint8Array(mk.hmacMasterKey),
 			kek,
 			'AES-KW',
 			{
@@ -312,15 +312,4 @@ export class Vault {
 		await this.provider.writeFileString(`${dir}/dir.c9r`, dirId);
 		return dirId;
 	}
-}
-
-function base64Decode(encoded: Base64Str): Uint8Array {
-	let decoded = atob(encoded);
-    let bytes = new Uint8Array(decoded.length);
-    for (var i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
-    return bytes;
-}
-
-function base64Encode(bin: Uint8Array): Base64Str {
-	return btoa(new TextDecoder('utf8').decode(bin)) as Base64Str;
 }
