@@ -1,13 +1,8 @@
 import { jest } from '@jest/globals';
-import crypto from 'crypto';
+import webcrypto from 'crypto';
 import { TextEncoder } from 'util';
 
 global.TextEncoder = TextEncoder
-
-Object.defineProperty(global, 'crypto', {
-	value: {
-		subtle: crypto.webcrypto.subtle
-	}
-}); // I still don't understand why declaring TextEncoder and subtle crypto for testing env needs to be different...
+global.crypto = webcrypto.webcrypto as any
 
 jest.setTimeout(50000000);
