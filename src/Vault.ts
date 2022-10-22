@@ -156,8 +156,8 @@ export class Vault {
 		}).sign(buffer);
 		buffer.fill(0);
 
-		await provider.writeFileString(`${dir}/masterkey.cryptomator`, JSON.stringify(mk));
-		await provider.writeFileString(`${dir}/vault.cryptomator`, vaultFile);
+		await provider.writeFile(`${dir}/masterkey.cryptomator`, JSON.stringify(mk));
+		await provider.writeFile(`${dir}/vault.cryptomator`, vaultFile);
 		await provider.createDir(`${dir}/d`);
 
 		const vault = new Vault(provider, dir, options.name, encKey, macKey, siv);
@@ -334,7 +334,7 @@ export class Vault {
 		const encDir = await this.getDir(dirId);
 		const dir = `${encDir}/${await this.encryptFileName(name, parent)}.c9r`;
 		await this.provider.createDir(dir, true);
-		await this.provider.writeFileString(`${dir}/dir.c9r`, dirId);
+		await this.provider.writeFile(`${dir}/dir.c9r`, dirId);
 		return dirId;
 	}
 }
