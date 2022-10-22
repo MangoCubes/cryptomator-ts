@@ -1,6 +1,7 @@
 import { DecryptionTarget, InvalidSignatureError } from "../Errors";
 import { ContentKey, DirID, File, ItemPath } from "../types";
 import { Vault } from "../Vault";
+import { EncryptedDir } from "./EncryptedDir";
 import { EncryptedItemBase } from "./EncryptedItemBase";
 
 type Header = {
@@ -10,11 +11,85 @@ type Header = {
 
 export class EncryptedFile extends EncryptedItemBase implements File{
 	type: 'f';
-	size: number;
 
-	constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, parentId: DirID, lastMod: Date, size: number){
+	static async encryptChunk(vault: Vault, header: Header, chunk: Uint8Array, chunkNum: number): Promise<Uint8Array>{
+		const nonce = crypto.getRandomValues(new Uint8Array(16));
+		const encrypted = new Uint8Array(await crypto.subtle.decrypt(
+			{
+				name: 'AES-CTR',
+				counter: nonce,
+				length: 32
+			},
+			header.contentKey,
+			chunk
+		));
+		const payload = new Uint8Array(40 + chunk.byteLength);
+		payload.set(header.nonce, 0);
+		const cCount = new Uint8Array(BigUint64Array.from([BigInt(chunkNum)]).buffer);
+		cCount.reverse();
+		payload.set(cCount, 16);
+		payload.set(nonce, 24);
+		payload.set(encrypted, 40);
+		const sig = new Uint8Array(await crypto.subtle.sign('HMAC', vault.macKey, payload));
+		const result = new Uint8Array(16 + chunk.byteLength + 32);
+		result.set(nonce, 0);
+		result.set(encrypted, 16);
+		result.set(sig, 16 + chunk.byteLength);
+		return result;
+	}
+
+	static async encrypt(vault: Vault, name: string, parent: DirID | null | EncryptedDir, content: Uint8Array | string): Promise<EncryptedFile>{
+		if(typeof(content) === 'string') content = new TextEncoder().encode(content);
+		const nonce = crypto.getRandomValues(new Uint8Array(16));
+		const contentKeyBuffer = crypto.getRandomValues(new Uint8Array(16));
+		const contentKey = await crypto.subtle.importKey(
+			'raw',
+			contentKeyBuffer,
+			'AES-CTR',
+			false,
+			['encrypt', 'decrypt']
+		) as ContentKey;
+		const payload = new Uint8Array(40);
+		payload.fill(255, 0, 8);
+		payload.set(contentKeyBuffer, 8);
+		contentKeyBuffer.fill(0);
+		const encPayload = new Uint8Array(await crypto.subtle.encrypt(
+			{
+				name: 'AES-CTR',
+				counter: nonce,
+				length: 32
+			},
+			vault.encKey,
+			payload
+		));
+		const sig = new Uint8Array(await crypto.subtle.sign('HMAC', vault.macKey, encPayload));
+		const encHeader = new Uint8Array(88);
+		encHeader.set(nonce, 0);
+		encHeader.set(encPayload, 16);
+		encHeader.set(sig, 56);
+		const chunkSize = 32768; // 32KiB
+		let encrypted = new Uint8Array();
+		for(let i = 0; i * chunkSize < content.byteLength; i++){
+			const chunk = content.slice(i * chunkSize, (i + 1) * chunkSize);
+			encrypted = concat(encrypted, await EncryptedFile.encryptChunk(vault, {
+				contentKey: contentKey,
+				nonce: nonce
+			}, chunk, i));
+		}
+		
+		let parentId: DirID;
+		if(parent === null) parentId = '' as DirID;
+		else if(typeof(parent) === 'string') parentId = parent;
+		else parentId = await parent.getDirId();
+		const encryptedDir = await vault.getDir(parentId);
+		const fileName = await vault.encryptFileName(name, parentId);
+		const filePath = `${encryptedDir}/${fileName}.c9r` as ItemPath;
+		await vault.provider.writeFile(filePath, encrypted);
+		return new EncryptedFile(vault, fileName, filePath, name, parentId, new Date());
+	}
+
+	constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, parentId: DirID, lastMod: Date){
 		super(vault, name, fullName, decryptedName, parentId, lastMod);
-		this.size = size;
 		this.type = 'f';
 	}
 

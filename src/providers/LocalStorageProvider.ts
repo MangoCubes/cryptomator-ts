@@ -25,8 +25,7 @@ export class LocalStorageProvider implements DataProvider{
 				type: stat.isDirectory() ? 'd' : 'f',
 				name: name,
 				fullName: fullName as ItemPath,
-				lastMod: stat.mtime,
-				size: stat.size
+				lastMod: stat.mtime
 			});
 		}
 		return items;

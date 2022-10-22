@@ -318,7 +318,7 @@ export class Vault {
 		for(let i = 0; i < enc.length; i++) {
 			const item = enc[i];
 			if(item.type === 'd') items.push(await EncryptedDir.open(this, item.name, item.fullName, names[i], dirId, item.lastMod));
-			if(item.type === 'f') items.push(new EncryptedFile(this, item.name, item.fullName, names[i], dirId, item.lastMod, item.size));
+			if(item.type === 'f') items.push(new EncryptedFile(this, item.name, item.fullName, names[i], dirId, item.lastMod));
 		}
 		return items;
 	}
@@ -336,5 +336,9 @@ export class Vault {
 		await this.provider.createDir(dir, true);
 		await this.provider.writeFile(`${dir}/dir.c9r`, dirId);
 		return dirId;
+	}
+	
+	async createDirAtRoot(name: string){
+		return await this.createDirectory(name, '' as DirID);
 	}
 }

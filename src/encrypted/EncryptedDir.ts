@@ -4,7 +4,7 @@ import { EncryptedItemBase } from "./EncryptedItemBase";
 
 export class EncryptedDir extends EncryptedItemBase implements Directory{
 	type: 'd';
-	dirId: null | DirID;
+	private dirId: null | DirID;
 
 	/**
 	 * Construct a directory object. Use this instead of default constructor as this provides additional options.

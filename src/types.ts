@@ -10,7 +10,6 @@ export type Directory = ItemBase & {
 
 export type File = ItemBase & {
 	type: 'f';
-	size: number;
 }
 
 export type Item = File | Directory;
