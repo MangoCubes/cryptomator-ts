@@ -8,16 +8,16 @@ import { DirID } from '../src/types';
 describe('Test creating a vault', () => {
 	const provider = new LocalStorageProvider();
 	test('Try creating a vault', async () => {
-		const dir = path.resolve(__dirname);
+		const dir = path.resolve(__dirname, 'encryptTest');
 		await Vault.create(provider, dir, '12341234', {
-			name: 'Test2'
+			name: 'encTest1'
 		});
-		await expect(Vault.open(provider, path.resolve(__dirname, 'Test2'), '12341234', null)).resolves.not.toThrowError();
+		await expect(Vault.open(provider, path.resolve(__dirname, 'encTest1'), '12341234', null)).resolves.not.toThrowError();
 	});
-	test.only('Try adding a file in root', async () => {
+	test('Try adding a file in root', async () => {
 		const dir = path.resolve(__dirname);
 		const v = await Vault.create(provider, dir, '12341234', {
-			name: 'Test3'
+			name: 'encTest2'
 		});
 		const testFunction = async () => {
 			await EncryptedFile.encrypt(v, 'HelloWorld.txt', '' as DirID, 'HELLO WORLD!');

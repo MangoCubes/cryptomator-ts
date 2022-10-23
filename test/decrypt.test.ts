@@ -9,7 +9,7 @@ import { InvalidSignatureError } from '../src/Errors';
 async function decrypt(provider: LocalStorageProvider, password: string, options?: {
 	vaultFile?: ItemPath
 }): Promise<Vault>{
-	const v = await Vault.open(provider, path.resolve(__dirname, 'Test'), password, 'Test Vault', options ? options : {vaultFile: path.resolve(__dirname, 'Test', 'vault-valid.cryptomator') as ItemPath});
+	const v = await Vault.open(provider, path.resolve(__dirname, 'decryptionTest'), password, 'Test Vault', options ? options : {vaultFile: path.resolve(__dirname, 'decryptionTest', 'vault-valid.cryptomator') as ItemPath});
 	return v;
 }
 
@@ -22,7 +22,7 @@ describe('Test opening an existing vault', () => {
 	});
 
 	test('Vault opening should fail if vault.cryptomator is invalid', async () => {
-		await expect(decrypt(provider, 'qq11@@11', {vaultFile: path.resolve(__dirname, 'Test', 'vault-corrupted.cryptomator') as ItemPath})).rejects.toThrowError(InvalidSignatureError);
+		await expect(decrypt(provider, 'qq11@@11', {vaultFile: path.resolve(__dirname, 'decryptionTest', 'vault-corrupted.cryptomator') as ItemPath})).rejects.toThrowError(InvalidSignatureError);
 	});
 
 	test('Try opening a vault with a correct password', async () => {
@@ -62,7 +62,7 @@ describe('Test opening an existing vault', () => {
 		const items = await vault.listItems('' as DirID);
 		const firstFile = items.find(i => i.decryptedName === 'WELCOME.rtf') as EncryptedFile;
 		const decrypted = await firstFile.decryptAsString();
-		const decryptedFile = path.resolve(__dirname, 'Test', decrypted.title);
+		const decryptedFile = path.resolve(__dirname, 'output', decrypted.title);
 		await provider.writeFile(decryptedFile, decrypted.content);
 		const read = async () => {
 			const str = await provider.readFileString(decryptedFile);
