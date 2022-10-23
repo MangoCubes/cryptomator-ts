@@ -21,9 +21,12 @@ describe('Test creating a vault', () => {
 		});
 		const testFunction = async () => {
 			await EncryptedFile.encrypt(v, 'HelloWorld.txt', '' as DirID, 'HELLO WORLD!');
+			await EncryptedFile.encrypt(v, 'HelloWorld2.txt', '' as DirID, 'ABCD'.repeat(1024 * 1024) + '123412341234');
 			const firstFile = (await v.listItems('' as DirID)).find(i => i.decryptedName === 'HelloWorld.txt') as EncryptedFile;
+			const secondFile = (await v.listItems('' as DirID)).find(i => i.decryptedName === 'HelloWorld2.txt') as EncryptedFile;
 			const decrypted = await firstFile.decryptAsString();
-			return decrypted.content.includes('HELLO WORLD!');
+			const decrypted2 = await secondFile.decryptAsString();
+			return decrypted.content.includes('HELLO WORLD!') && decrypted2.content.includes('123412341234');
 		}
 		
 		await expect(testFunction()).resolves.toBe(true);
