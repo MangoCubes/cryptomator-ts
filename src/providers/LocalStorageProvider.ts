@@ -4,6 +4,13 @@ import { promises as fs } from "fs";
 import * as p from "path";
 
 export class LocalStorageProvider implements DataProvider{
+	async removeFile(path: string): Promise<void>{
+		await fs.rm(path);
+	}
+	
+	async removeDir(path: string): Promise<void>{
+		await fs.rm(path, {recursive: true});
+	}
 	async createDir(path: string, recursive?: boolean | undefined): Promise<void>{
 		await fs.mkdir(path, {recursive: recursive});
 	}

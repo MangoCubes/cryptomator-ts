@@ -6,4 +6,9 @@ export type DataProvider = {
 	readFile: (path: string) => Promise<Uint8Array>;
 	writeFile: (path: string, content: Uint8Array | string) => Promise<void>;
 	createDir: (path: string, recursive?: boolean) => Promise<void>;
+	removeFile: (path: string) => Promise<void>;
+	/**
+	 * Should be able to delete recursively
+	 */
+	removeDir: (path: string) => Promise<void>;
 }
