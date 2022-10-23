@@ -197,28 +197,28 @@ export class Vault {
 		const token = await provider.readFileString(options?.vaultFile ? options.vaultFile : dir + '/vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
 		const mk = JSON.parse(await provider.readFileString(options?.masterkeyFile ? options.masterkeyFile : dir + '/masterkey.cryptomator')) as Masterkey;
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), Base64.toUint8Array(mk.scryptSalt), mk.scryptCostParam, mk.scryptBlockSize, 1, 32);
-		let kek: CryptoKey;
-		try {
-			kek = await crypto.subtle.importKey(
+		const kek = await crypto.subtle.importKey(
+			'raw',
+			kekBuffer,
+			'AES-KW',
+			false,
+			['unwrapKey']
+		);
+		kekBuffer.fill(0);
+		let encKey: EncryptionKey;
+		try{
+			encKey = await crypto.subtle.unwrapKey(
 				'raw',
-				kekBuffer,
+				Base64.toUint8Array(mk.primaryMasterKey),
+				kek,
 				'AES-KW',
-				false,
-				['unwrapKey']
-			);
+				'AES-CTR',
+				true,
+				['encrypt', 'decrypt']
+			) as EncryptionKey;
 		} catch(e) {
 			throw new DecryptionError(DecryptionTarget.Vault, null);
 		}
-		kekBuffer.fill(0);
-		const encKey = await crypto.subtle.unwrapKey(
-			'raw',
-			Base64.toUint8Array(mk.primaryMasterKey),
-			kek,
-			'AES-KW',
-			'AES-CTR',
-			true,
-			['encrypt', 'decrypt']
-		) as EncryptionKey;
 		const extractedEnc = new Uint8Array(await crypto.subtle.exportKey('raw', encKey));
 		const macKey = await crypto.subtle.unwrapKey(
 			'raw',
