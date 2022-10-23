@@ -1,21 +1,22 @@
-import { describe, expect, test } from '@jest/globals';
+import { afterAll, describe, expect, test } from '@jest/globals';
 import path from "path";
 import { Vault } from '../src/Vault';
 import { LocalStorageProvider } from '../src/providers/LocalStorageProvider';
 import { EncryptedFile } from '../src/encrypted/EncryptedFile';
 import { DirID } from '../src/types';
+import { DecryptionError, DecryptionTarget } from '../src/Errors';
 
 describe('Test creating a vault', () => {
 	const provider = new LocalStorageProvider();
+	const dir = path.resolve(__dirname, 'encryptionTest');
 	test('Try creating a vault', async () => {
-		const dir = path.resolve(__dirname, 'encryptTest');
 		await Vault.create(provider, dir, '12341234', {
 			name: 'encTest1'
 		});
-		await expect(Vault.open(provider, path.resolve(__dirname, 'encTest1'), '12341234', null)).resolves.not.toThrowError();
+		await expect(Vault.open(provider, path.resolve(dir, 'encTest1'), '1234123', null)).rejects.toThrowError(DecryptionError<DecryptionTarget.Vault>);
+		await expect(Vault.open(provider, path.resolve(dir, 'encTest1'), '12341234', null)).resolves.not.toThrowError();
 	});
 	test('Try adding a file in root', async () => {
-		const dir = path.resolve(__dirname);
 		const v = await Vault.create(provider, dir, '12341234', {
 			name: 'encTest2'
 		});

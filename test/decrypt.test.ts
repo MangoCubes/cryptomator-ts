@@ -62,7 +62,9 @@ describe('Test opening an existing vault', () => {
 		const items = await vault.listItems('' as DirID);
 		const firstFile = items.find(i => i.decryptedName === 'WELCOME.rtf') as EncryptedFile;
 		const decrypted = await firstFile.decryptAsString();
-		const decryptedFile = path.resolve(__dirname, 'output', decrypted.title);
+		const testFileName = decrypted.title + new Date().getTime();
+		console.log('Output generated: ' + testFileName)
+		const decryptedFile = path.resolve(__dirname, 'output', testFileName);
 		await provider.writeFile(decryptedFile, decrypted.content);
 		const read = async () => {
 			const str = await provider.readFileString(decryptedFile);
