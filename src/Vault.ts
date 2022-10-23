@@ -259,7 +259,7 @@ export class Vault {
 		const sivId = this.siv.seal([], new TextEncoder().encode(dirId));
 		const ab = await crypto.subtle.digest('SHA-1', sivId);
 		const dirHash = b32.stringify(new Uint8Array(ab), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567');
-		return `${this.dir}/d/${dirHash.substring(0, 2)}/${dirHash.substring(2)}`;
+		return `${this.dir}/d/${dirHash.substring(0, 2)}/${dirHash.substring(2)}` as ItemPath;
 	}
 
 	/**
@@ -331,15 +331,16 @@ export class Vault {
 	 * Create a directory under a given directory ID
 	 * @param name Name of the folder
 	 * @param parent Directory ID of the parent folder
-	 * @returns Directory ID of the new folder
+	 * @returns New EncryptedDir object that corresponds to the new directory
 	 */
 	async createDirectory(name: string, parent: DirID){
 		const dirId = crypto.randomUUID() as DirID;
 		const encDir = await this.getDir(dirId);
-		const dir = `${encDir}/${await this.encryptFileName(name, parent)}.c9r`;
+		const encName = await this.encryptFileName(name, parent);
+		const dir = `${encDir}/${encName}.c9r`;
 		await this.provider.createDir(dir, true);
 		await this.provider.writeFile(`${dir}/dir.c9r`, dirId);
-		return dirId;
+		return await EncryptedDir.open(this, encName, encDir, name, parent, new Date(), {dirId: dirId});
 	}
 	
 	async createDirAtRoot(name: string){

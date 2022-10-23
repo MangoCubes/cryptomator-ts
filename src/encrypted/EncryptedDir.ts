@@ -62,7 +62,12 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 		return await this.vault.listItems(await this.getDirId());
 	}
 
+	/**
+	 * Create a directory under this directory
+	 * @param name Name of the new directory
+	 * @returns New EncryptedDir object that corresponds to the created directory
+	 */
 	async createDirectory(name: string){
-
+		return await this.vault.createDirectory(name, await this.getDirId());
 	}
 }
