@@ -14,7 +14,7 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 
 	static async encryptChunk(vault: Vault, header: Header, chunk: Uint8Array, chunkNum: number): Promise<Uint8Array>{
 		const nonce = crypto.getRandomValues(new Uint8Array(16));
-		const encrypted = new Uint8Array(await crypto.subtle.decrypt(
+		const encrypted = new Uint8Array(await crypto.subtle.encrypt(
 			{
 				name: 'AES-CTR',
 				counter: nonce,
@@ -41,7 +41,7 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 	static async encrypt(vault: Vault, name: string, parent: DirID | null | EncryptedDir, content: Uint8Array | string): Promise<EncryptedFile>{
 		if(typeof(content) === 'string') content = new TextEncoder().encode(content);
 		const nonce = crypto.getRandomValues(new Uint8Array(16));
-		const contentKeyBuffer = crypto.getRandomValues(new Uint8Array(16));
+		const contentKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
 		const contentKey = await crypto.subtle.importKey(
 			'raw',
 			contentKeyBuffer,
@@ -61,7 +61,7 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 			},
 			vault.encKey,
 			payload
-		));
+		));		
 		
 		
 		let encrypted = new Uint8Array(88);
