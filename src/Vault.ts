@@ -34,6 +34,25 @@ type Masterkey = {
 	version: 999;
 }
 
+type VaultSettings = {
+	/**
+	 * Currently, only version 8 is supported.
+	 */
+	format: number;
+	/**
+	 * Defaults to 220 if not provided.
+	 */
+	shorteningThreshold: number;
+	/**
+	 * Defaults to 32768 as per recommendation specified at https://github.com/cryptomator/cryptomator/issues/611.
+	 */
+	scryptCostParam: number;
+	/**
+	 * Defaults to 8.
+	 */
+	scryptBlockSize: number;
+}
+
 type CreateVaultOpts = ({
 	/**
 	 * Name of this vault.
@@ -47,33 +66,22 @@ type CreateVaultOpts = ({
 	 * In other words, the vault.cryptomator and masterkey.cryptomator will be created in the specified directory.
 	 */
 	createHere: true;
-}) & Partial<{
-	/**
-	 * Currently, other versions are not supported.
-	 */
-	format: 8;
-	/**
-	 * Shortening threshold is currently hardcoded to 220, the default for official Cryptomator softwares.
-	 */
-	shorteningThreshold: 220;
-	/**
-	 * Defaults to 32768 as per recommendation specified at https://github.com/cryptomator/cryptomator/issues/611.
-	 */
-	scryptCostParam: number;
-	/**
-	 * Defaults to 8.
-	 */
-	scryptBlockSize: number;
-}>
+}) & Partial<VaultSettings>;
 
 
 /**
  * Cryptomator vault object
  */
 export class Vault {
-	private constructor(public provider: DataProvider, public dir: string, public name: string | null, public encKey: EncryptionKey, public macKey: MACKey, private siv: SIV){
-		
-	}
+	private constructor(
+		public provider: DataProvider,
+		public dir: string,
+		public name: string | null,
+		public encKey: EncryptionKey,
+		public macKey: MACKey,
+		private siv: SIV,
+		public vaultSettings: VaultSettings
+	){}
 
 	/**
 	 * Create a vault.
@@ -164,7 +172,12 @@ export class Vault {
 		await provider.writeFile(`${dir}/vault.cryptomator`, vaultFile);
 		await provider.createDir(`${dir}/d`);
 
-		const vault = new Vault(provider, dir, options.name, encKey, macKey, siv);
+		const vault = new Vault(provider, dir, options.name, encKey, macKey, siv, {
+			format: options.format ?? 8,
+			shorteningThreshold: options.shorteningThreshold ?? 220,
+			scryptCostParam: sCostParam,
+			scryptBlockSize: sBlockSize
+		});
 		const rootDir = await vault.getRootDir();
 		await provider.createDir(rootDir, true);
 
@@ -241,13 +254,20 @@ export class Vault {
 		buffer.set(extractedMac, 32);
 		extractedMac.fill(0);
 		extractedEnc.fill(0);
+		let vaultConfig: VaultConfig;
 		try {
-			await jwtVerify(token, buffer);
+			const res = await jwtVerify(token, buffer);
+			vaultConfig = res.payload as VaultConfig;
 		} catch(e) {
 			throw new InvalidSignatureError(DecryptionTarget.Vault);
 		}
 		buffer.fill(0);
-		return new Vault(provider, dir, name, encKey, macKey, siv);
+		return new Vault(provider, dir, name, encKey, macKey, siv, {
+			format: vaultConfig.format,
+			shorteningThreshold: vaultConfig.shorteningThreshold,
+			scryptCostParam: mk.scryptCostParam,
+			scryptBlockSize: mk.scryptBlockSize
+		});
 	}
 
 	/**
