@@ -339,6 +339,7 @@ export class Vault {
 		const encName = await this.encryptFileName(name, parent);
 		const dir = `${encDir}/${encName}.c9r`;
 		await this.provider.createDir(dir, true);
+		await this.provider.createDir(await this.getDir(dirId), true);
 		await this.provider.writeFile(`${dir}/dir.c9r`, dirId);
 		return await EncryptedDir.open(this, encName, encDir, name, parent, new Date(), {dirId: dirId});
 	}
