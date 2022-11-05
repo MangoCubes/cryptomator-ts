@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, test } from '@jest/globals';
+import { afterAll, beforeAll, describe, expect, test } from '@jest/globals';
 import path from "path";
 import { Vault } from '../src/Vault';
 import { LocalStorageProvider } from '../src/providers/LocalStorageProvider';
@@ -13,9 +13,40 @@ async function randomBuffer(size: number): Promise<Uint8Array>{
 	return arr;
 }
 
+/**
+ * Creates random files and folders
+ * 0: Create a file in the current directory. Name is a random UUID, and its content is SHA-256 of the decrypted name.
+ * 1: Create a directory, and go into it. Name is a randomly generated UUID.
+ * 2: Go up a directory. Unavailable if the current directory is root.
+ */
+async function genRandomVault(provider: LocalStorageProvider, dir: string, id: number){
+	const v = await Vault.create(provider, dir, '12341234', {
+		name: `encTest${id}`
+	});
+	const path: DirID[] = [];
+	for(let i = 0; i < 100; i++){
+		const action = Math.floor(Math.random() * (path.length === 0 ? 2 : 3));
+		const last = path.length === 0 ? '' as DirID : path[path.length - 1];
+		if(action === 0){
+			const name = crypto.randomUUID();
+			const content = crypto.createHash('sha256').update(name).digest();
+			await EncryptedFile.encrypt(v, name, last, content);
+		} else if(action === 1){
+			const name = crypto.randomUUID();
+			const dir = await v.createDirectory(name, last);
+			path.push(await dir.getDirId());
+		} else if(action === 2) path.pop();
+	}
+	return v;
+}
+
 describe('Test creating a vault', () => {
 	const provider = new LocalStorageProvider();
 	const dir = path.resolve(__dirname, 'encryptionTest');
+	beforeAll(async () => {
+		const testVaults = await provider.listItems(dir);
+		for(const v of testVaults) await provider.removeDir(v.fullName);
+	});
 	test('Try creating a vault', async () => {
 		await Vault.create(provider, dir, '12341234', {
 			name: 'encTest1'
@@ -50,8 +81,7 @@ describe('Test creating a vault', () => {
 		
 		await expect(testFunction()).resolves.toBe(true);
 	});
-	afterAll(async () => {
-		const testVaults = await provider.listItems(dir);
-		for(const v of testVaults) await provider.removeDir(v.fullName);
+	test('Create a random tree within a vault', async () => {
+		const v = await genRandomVault(provider, dir, 3);
 	});
 });
