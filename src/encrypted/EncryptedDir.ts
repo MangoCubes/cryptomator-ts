@@ -70,4 +70,11 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 	async createDirectory(name: string){
 		return await this.vault.createDirectory(name, await this.getDirId());
 	}
+
+	/**
+	 * Delete this directory
+	 */
+	async deleteDir(){
+		await this.vault.deleteDir(this);
+	}
 }

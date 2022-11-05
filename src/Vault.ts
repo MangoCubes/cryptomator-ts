@@ -344,14 +344,27 @@ export class Vault {
 		return await EncryptedDir.open(this, encName, encDir, name, parent, new Date(), {dirId: dirId});
 	}
 	
+	/**
+	 * Create a directory in root
+	 * @param name Name of the folder
+	 * @returns New EncryptedDir object that corresponds to the new directory
+	 */
 	async createDirAtRoot(name: string){
 		return await this.createDirectory(name, '' as DirID);
 	}
 
+	/**
+	 * Delete a file the EncryptedFile object corresponds to. Object passed to this function should never be used.
+	 * @param f EncryptedFile object of the file to delete
+	 */
 	async deleteFile(f: EncryptedFile) {
 		await this.provider.removeFile(f.fullName);
 	}
 
+	/**
+	 * Delete a directory the EncryptedDir corresponds to. Anything within this directory will be deleted recursively. Anything deleted because of this should never be used.
+	 * @param d EncryptedDir object of the directory to delete
+	 */
 	async deleteDir(d: EncryptedDir) {
 		const dirIdList: DirID[] = [await d.getDirId()];
 		const dirList: string[] = [d.fullName];

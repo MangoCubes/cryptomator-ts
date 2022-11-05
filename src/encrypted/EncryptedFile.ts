@@ -216,8 +216,8 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 	/**
 	 * Delete this file. All details within this object will become invalid after this function is called.
 	 */
-	async delete(){
-
+	async deleteFile(){
+		await this.vault.deleteFile(this);
 	}
 }
 
