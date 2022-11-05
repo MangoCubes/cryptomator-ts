@@ -83,6 +83,7 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		else if(typeof(parent) === 'string') parentId = parent;
 		else parentId = await parent.getDirId();
 		const encryptedDir = await vault.getDir(parentId);
+		await vault.provider.createDir(encryptedDir, true);
 		const fileName = await vault.encryptFileName(name, parentId);
 		const filePath = `${encryptedDir}/${fileName}.c9r` as ItemPath;
 		await vault.provider.writeFile(filePath, encrypted);
@@ -210,6 +211,13 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 			title: this.decryptedName,
 			content: new TextDecoder().decode(await this.decryptContent())
 		};
+	}
+
+	/**
+	 * Delete this file. All details within this object will become invalid after this function is called.
+	 */
+	async delete(){
+
 	}
 }
 

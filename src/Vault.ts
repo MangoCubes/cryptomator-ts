@@ -335,7 +335,7 @@ export class Vault {
 	 */
 	async createDirectory(name: string, parent: DirID){
 		const dirId = crypto.randomUUID() as DirID;
-		const encDir = await this.getDir(dirId);
+		const encDir = await this.getDir(parent);
 		const encName = await this.encryptFileName(name, parent);
 		const dir = `${encDir}/${encName}.c9r`;
 		await this.provider.createDir(dir, true);
