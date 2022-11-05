@@ -30,7 +30,7 @@ async function genRandomVault(provider: LocalStorageProvider, dir: string, id: n
 	});
 	const path: DirID[] = [];
 	const tree: {[key: string]: SimpleItem[]} = {};
-	for(let i = 0; i < 100; i++){
+	for(let i = 0; i < 1000; i++){
 		const action = Math.floor(Math.random() * (path.length === 0 ? 2 : 3));
 		const last = path.length === 0 ? '' as DirID : path[path.length - 1];
 		if(action === 0){
@@ -62,7 +62,14 @@ async function verifyTree(vault: Vault, tree: {[key: string]: SimpleItem[]}){
 			if(item.type === 'd') folders.push(await item.getDirId());
 			const index = tree[item.parentId].findIndex(i => i.name === item.decryptedName && i.type === item.type);
 			if(index === -1) return item;
-			else tree[item.parentId].splice(index, 1);
+			else {
+				if(item.type === 'f'){
+					const content = crypto.createHash('sha256').update(tree[item.parentId][index].name).digest();
+					const decrypted = await item.decrypt();
+					if(Buffer.compare(content, decrypted.content) !== 0) return item;
+				}
+				tree[item.parentId].splice(index, 1);
+			}
 		}
 	}
 	for(const k in tree) if(tree[k].length !== 0) return tree[k];
