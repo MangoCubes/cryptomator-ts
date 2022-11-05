@@ -346,4 +346,24 @@ export class Vault {
 	async createDirAtRoot(name: string){
 		return await this.createDirectory(name, '' as DirID);
 	}
+
+	async deleteFile(f: EncryptedFile) {
+		await this.provider.removeFile(f.fullName);
+	}
+
+	async deleteDir(d: EncryptedDir) {
+		const dirIdList: DirID[] = [await d.getDirId()];
+		const dirList: string[] = [d.fullName];
+		while(dirIdList.length){
+			const current = dirIdList.pop() as DirID;
+			const items = await this.listItems(current);
+			for(const i of items){
+				if(i.type === 'd') dirIdList.push(await i.getDirId());
+				dirList.push(i.fullName);
+			}
+		}
+		const delOps: Promise<void>[] = [];
+		for(const d of dirList) delOps.push(this.provider.removeDir(d));
+		await Promise.all(delOps);
+	}
 }

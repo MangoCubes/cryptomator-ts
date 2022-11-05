@@ -15,7 +15,7 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 	 * @param parent Directory ID of the parent folder
 	 * @param lastMod Last modification date
 	 * @param options.cacheDirId If true, the ID of the directory will be queried, and cached into the object.
-	 * @param options.dirId If set, this ID will be cached and used. Do not set this if it is wrong.
+	 * @param options.dirId If set, this ID will be cached and used. Do not set this if you are not certain it is the correct directory ID. Overrides options.cacheDirId
 	 * @returns EncryptedDir object
 	 */
 	static async open(
