@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from '@jest/globals';
+import { beforeAll, describe, expect, test } from '@jest/globals';
 import path from "path";
 import { Vault } from '../src/Vault';
 import { LocalStorageProvider } from '../src/providers/LocalStorageProvider';
@@ -13,6 +13,11 @@ async function randomBuffer(size: number): Promise<Uint8Array>{
 	return arr;
 }
 
+type SimpleItem = {
+	type: 'd' | 'f';
+	name: string;
+}
+
 /**
  * Creates random files and folders
  * 0: Create a file in the current directory. Name is a random UUID, and its content is SHA-256 of the decrypted name.
@@ -24,6 +29,7 @@ async function genRandomVault(provider: LocalStorageProvider, dir: string, id: n
 		name: `encTest${id}`
 	});
 	const path: DirID[] = [];
+	const tree: {[key: string]: SimpleItem[]} = {};
 	for(let i = 0; i < 100; i++){
 		const action = Math.floor(Math.random() * (path.length === 0 ? 2 : 3));
 		const last = path.length === 0 ? '' as DirID : path[path.length - 1];
@@ -31,13 +37,36 @@ async function genRandomVault(provider: LocalStorageProvider, dir: string, id: n
 			const name = crypto.randomUUID();
 			const content = crypto.createHash('sha256').update(name).digest();
 			await EncryptedFile.encrypt(v, name, last, content);
+			if(tree[last]) tree[last].push({type: 'f', name: name});
+			else tree[last] = [{type: 'f', name: name}];
 		} else if(action === 1){
 			const name = crypto.randomUUID();
 			const dir = await v.createDirectory(name, last);
 			path.push(await dir.getDirId());
+			if(tree[last]) tree[last].push({type: 'd', name: name});
+			else tree[last] = [{type: 'd', name: name}];
 		} else if(action === 2) path.pop();
 	}
-	return v;
+	return {
+		vault: v,
+		tree: tree
+	};
+}
+
+async function verifyTree(vault: Vault, tree: {[key: string]: SimpleItem[]}){
+	const folders = ['' as DirID];
+	while(folders.length){
+		const current = folders.pop() as DirID;
+		const items = await vault.listItems(current);
+		for(const item of items){
+			if(item.type === 'd') folders.push(await item.getDirId());
+			const index = tree[item.parentId].findIndex(i => i.name === item.decryptedName && i.type === item.type);
+			if(index === -1) return item;
+			else tree[item.parentId].splice(index, 1);
+		}
+	}
+	for(const k in tree) if(tree[k].length !== 0) return tree[k];
+	return null;
 }
 
 describe('Test creating a vault', () => {
@@ -82,6 +111,7 @@ describe('Test creating a vault', () => {
 		await expect(testFunction()).resolves.toBe(true);
 	});
 	test('Create a random tree within a vault', async () => {
-		const v = await genRandomVault(provider, dir, 3);
+		const sample = await genRandomVault(provider, dir, 3);
+		await expect(verifyTree(sample.vault, sample.tree)).resolves.toBe(null);
 	});
 });
