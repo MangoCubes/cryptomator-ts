@@ -1,3 +1,4 @@
+import { base64url } from "jose";
 import { DecryptionTarget, InvalidSignatureError } from "../Errors";
 import { ContentKey, DirID, File, ItemPath } from "../types";
 import { Vault } from "../Vault";
@@ -85,9 +86,18 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		const encryptedDir = await vault.getDir(parentId);
 		await vault.provider.createDir(encryptedDir, true);
 		const fileName = await vault.encryptFileName(name, parentId);
-		const filePath = `${encryptedDir}/${fileName}.c9r` as ItemPath;
-		await vault.provider.writeFile(filePath, encrypted);
-		return new EncryptedFile(vault, fileName, filePath, name, parentId, new Date());
+		let fileDir;
+		if(fileName.length > vault.vaultSettings.shorteningThreshold){
+			const shortened = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(fileName));
+			const shortDir = base64url.encode(new Uint8Array(shortened));
+			fileDir = `${encryptedDir}/${shortDir}.c9s` as ItemPath;
+			await vault.provider.writeFile(`${fileDir}/contents.c9r`, encrypted);
+			await vault.provider.writeFile(`${fileDir}/name.c9r`, fileName);
+		} else {
+			fileDir = `${encryptedDir}/${fileName}.c9r` as ItemPath;
+			await vault.provider.writeFile(fileDir, encrypted);
+		}
+		return new EncryptedFile(vault, fileName, fileDir, name, parentId, new Date());
 	}
 
 	constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, parentId: DirID, lastMod: Date){
