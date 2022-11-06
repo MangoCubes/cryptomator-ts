@@ -92,7 +92,7 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 			const shortDir = base64url.encode(new Uint8Array(shortened));
 			fileDir = `${encryptedDir}/${shortDir}.c9s` as ItemPath;
 			await vault.provider.writeFile(`${fileDir}/contents.c9r`, encrypted);
-			await vault.provider.writeFile(`${fileDir}/name.c9r`, fileName);
+			await vault.provider.writeFile(`${fileDir}/name.c9s`, fileName);
 		} else {
 			fileDir = `${encryptedDir}/${fileName}.c9r` as ItemPath;
 			await vault.provider.writeFile(fileDir, encrypted);
