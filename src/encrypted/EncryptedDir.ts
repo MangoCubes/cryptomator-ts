@@ -1,5 +1,6 @@
 import { Directory, DirID, ItemPath } from "../types";
 import { Vault } from "../Vault";
+import { EncryptedFile } from "./EncryptedFile";
 import { EncryptedItemBase } from "./EncryptedItemBase";
 
 export class EncryptedDir extends EncryptedItemBase implements Directory{
@@ -31,13 +32,14 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 		}
 	){
 		let dirId: DirID | null = null;
+		const shortened = fullName.endsWith('s');
 		if(options?.dirId) dirId = options.dirId;
 		else if(options?.cacheDirId) dirId = await vault.provider.readFileString(fullName + '/dir.c9r') as DirID;
-		return new EncryptedDir(vault, name, fullName, decryptedName, parent, lastMod, dirId);
+		return new EncryptedDir(vault, name, fullName, decryptedName, parent, lastMod, dirId, shortened);
 	}
 
-	private constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, parent: DirID, lastMod: Date, dirId: DirID | null){
-		super(vault, name, fullName, decryptedName, parent, lastMod);
+	private constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, parent: DirID, lastMod: Date, dirId: DirID | null, shortened: boolean){
+		super(vault, name, fullName, decryptedName, parent, lastMod, shortened);
 		this.dirId = dirId;
 		this.type = 'd';
 	}
@@ -72,9 +74,19 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 	}
 
 	/**
-	 * Delete this directory
+	 * Delete this directory. This object will become invalid, and should never be used again.
 	 */
 	async deleteDir(){
 		await this.vault.deleteDir(this);
+	}
+
+	/**
+	 * Create a file under this directory
+	 * @param name Name of the file
+	 * @param content Content of the file
+	 * @returns EncryptedFile object that corresponds to the input
+	 */
+	async createFile(name: string, content: Uint8Array | string){
+		return await EncryptedFile.encrypt(this.vault, name, this, content);
 	}
 }

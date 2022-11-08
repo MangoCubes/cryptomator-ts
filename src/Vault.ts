@@ -311,6 +311,7 @@ export class Vault {
 	async decryptFileName(item: Item, parent: DirID): Promise<string>{
 		let name;
 		if(item.name.endsWith('.c9r')) name = item.name.slice(0, -4);
+		else if(item.name.endsWith('.c9s')) name = await this.provider.readFileString(item.fullName + '/name.c9s');
 		else name = item.name;
 		const decrypted = this.siv.open([new TextEncoder().encode(parent)], base64url.decode(name));
 		if(decrypted === null) throw new DecryptionError(DecryptionTarget.ItemName, item);
@@ -342,7 +343,7 @@ export class Vault {
 		for(let i = 0; i < enc.length; i++) {
 			const item = enc[i];
 			if(item.type === 'd') items.push(await EncryptedDir.open(this, item.name, item.fullName, names[i], dirId, item.lastMod));
-			if(item.type === 'f') items.push(new EncryptedFile(this, item.name, item.fullName, names[i], dirId, item.lastMod));
+			if(item.type === 'f') items.push(new EncryptedFile(this, item.name, item.fullName, names[i], dirId, item.lastMod, names[i].endsWith('s')));
 		}
 		return items;
 	}

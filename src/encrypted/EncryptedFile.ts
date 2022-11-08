@@ -86,22 +86,23 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		const encryptedDir = await vault.getDir(parentId);
 		await vault.provider.createDir(encryptedDir, true);
 		const fileName = await vault.encryptFileName(name, parentId);
-		let fileDir;
 		if(fileName.length > vault.vaultSettings.shorteningThreshold){
 			const shortened = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(fileName));
 			const shortDir = base64url.encode(new Uint8Array(shortened));
-			fileDir = `${encryptedDir}/${shortDir}.c9s` as ItemPath;
+			const fileDir = `${encryptedDir}/${shortDir}.c9s` as ItemPath;
 			await vault.provider.writeFile(`${fileDir}/contents.c9r`, encrypted);
 			await vault.provider.writeFile(`${fileDir}/name.c9s`, fileName);
+			return new EncryptedFile(vault, fileName, fileDir, name, parentId, new Date(), true);
 		} else {
-			fileDir = `${encryptedDir}/${fileName}.c9r` as ItemPath;
+			const fileDir = `${encryptedDir}/${fileName}.c9r` as ItemPath;
 			await vault.provider.writeFile(fileDir, encrypted);
+			return new EncryptedFile(vault, fileName, fileDir, name, parentId, new Date(), false);
 		}
-		return new EncryptedFile(vault, fileName, fileDir, name, parentId, new Date());
+		
 	}
 
-	constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, parentId: DirID, lastMod: Date){
-		super(vault, name, fullName, decryptedName, parentId, lastMod);
+	constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, parentId: DirID, lastMod: Date, shortened: boolean){
+		super(vault, name, fullName, decryptedName, parentId, lastMod, shortened);
 		this.type = 'f';
 	}
 
