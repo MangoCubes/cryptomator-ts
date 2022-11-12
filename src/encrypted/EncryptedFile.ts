@@ -150,6 +150,7 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 	 * @returns Uint8array of the encrypted file content
 	 */
 	async readEncryptedFile(){
+		if(this.shortened) return await this.vault.provider.readFile(this.fullName + '/contents.c9r');
 		return await this.vault.provider.readFile(this.fullName);
 	}
 

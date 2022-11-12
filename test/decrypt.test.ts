@@ -94,5 +94,5 @@ describe('Test opening an existing vault', () => {
 			return foundDir && foundFile;
 		}
 		await expect(f()).resolves.toBe(true);
-	})
+	});
 });

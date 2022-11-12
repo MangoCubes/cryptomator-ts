@@ -366,8 +366,9 @@ export class Vault {
 		const dirId = crypto.randomUUID() as DirID;
 		const encDir = await this.getDir(parent);
 		const encName = await this.encryptFileName(name, parent);
+		const needsToBeShortened = encName.length > this.vaultSettings.shorteningThreshold;
 		let dir;
-		if(encName.length > this.vaultSettings.shorteningThreshold){
+		if(needsToBeShortened){
 			const shortened = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(encName));
 			const shortDir = base64url.encode(new Uint8Array(shortened));
 			dir = `${encDir}/${shortDir}.c9s`
@@ -375,8 +376,8 @@ export class Vault {
 		await this.provider.createDir(dir, true);
 		await this.provider.createDir(await this.getDir(dirId), true);
 		await this.provider.writeFile(`${dir}/dir.c9r`, dirId);
-		if (encName.length > this.vaultSettings.shorteningThreshold) await this.provider.writeFile(`${dir}/name.c9s`, encName);
-		return await EncryptedDir.open(this, encName, encDir, name, parent, new Date(), false, {dirId: dirId});
+		if (needsToBeShortened) await this.provider.writeFile(`${dir}/name.c9s`, encName);
+		return await EncryptedDir.open(this, encName, encDir, name, parent, new Date(), needsToBeShortened, {dirId: dirId});
 	}
 	
 	/**
