@@ -24,6 +24,15 @@ async function decrypt(provider: LocalStorageProvider, password: string, vaultNu
 	return v;
 }
 
+async function saveDecrypted(provider: LocalStorageProvider, file: EncryptedFile) {
+	const decrypted = await file.decryptAsString();
+	const testFileName = new Date().getTime() + decrypted.title.slice(-20);
+	console.log('Output generated: ' + testFileName)
+	const decryptedFile = path.resolve(__dirname, 'output', testFileName);
+	await provider.writeFile(decryptedFile, decrypted.content);
+	return decryptedFile;
+}
+
 describe('Test opening an existing vault', () => {
 	const provider = new LocalStorageProvider();
 	test('Wrong password should throw an error', async () => {
@@ -72,11 +81,7 @@ describe('Test opening an existing vault', () => {
 		const vault = await decrypt(provider, 'qq11@@11', 1);
 		const items = await vault.listItems('' as DirID);
 		const firstFile = items.find(i => i.decryptedName === 'WELCOME.rtf') as EncryptedFile;
-		const decrypted = await firstFile.decryptAsString();
-		const testFileName = decrypted.title + new Date().getTime();
-		console.log('Output generated: ' + testFileName)
-		const decryptedFile = path.resolve(__dirname, 'output', testFileName);
-		await provider.writeFile(decryptedFile, decrypted.content);
+		const decryptedFile = await saveDecrypted(provider, firstFile);
 		const read = async () => {
 			const str = await provider.readFileString(decryptedFile);
 			return str.includes('Cryptomator');
@@ -94,5 +99,18 @@ describe('Test opening an existing vault', () => {
 			return foundDir && foundFile;
 		}
 		await expect(f()).resolves.toBe(true);
+	});
+
+	test('Try decrypting file with long name', async () => {
+		const vault = await decrypt(provider, '12341234', 2);
+		const items = await vault.listItems('' as DirID);
+		const longItems = items.filter(i => i.decryptedName.length > 220);
+		const foundFile = longItems.find(i => i.decryptedName.length > 220 && i.decryptedName.includes('B'.repeat(220)) && i.decryptedName.endsWith('.txt')) as EncryptedFile;
+		const decryptedFile = await saveDecrypted(provider, foundFile);
+		const read = async () => {
+			const str = await provider.readFileString(decryptedFile);
+			return str.includes('Hello world');
+		}
+		await expect(read()).resolves.toBe(true);
 	});
 });
