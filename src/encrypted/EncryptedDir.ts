@@ -26,13 +26,13 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 		decryptedName: string,
 		parent: DirID,
 		lastMod: Date,
+		shortened: boolean,
 		options?: {
 			cacheDirId?: boolean,
 			dirId?: DirID
 		}
 	){
 		let dirId: DirID | null = null;
-		const shortened = fullName.endsWith('s');
 		if(options?.dirId) dirId = options.dirId;
 		else if(options?.cacheDirId) dirId = await vault.provider.readFileString(fullName + '/dir.c9r') as DirID;
 		return new EncryptedDir(vault, name, fullName, decryptedName, parent, lastMod, dirId, shortened);

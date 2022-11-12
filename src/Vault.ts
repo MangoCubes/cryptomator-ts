@@ -342,8 +342,16 @@ export class Vault {
 		const items: EncryptedItem[] = [];
 		for(let i = 0; i < enc.length; i++) {
 			const item = enc[i];
-			if(item.type === 'd') items.push(await EncryptedDir.open(this, item.name, item.fullName, names[i], dirId, item.lastMod));
-			if(item.type === 'f') items.push(new EncryptedFile(this, item.name, item.fullName, names[i], dirId, item.lastMod, names[i].endsWith('s')));
+			let type;
+			let shortened = false;
+			if(item.type === 'd' && item.fullName.endsWith('.c9s')){
+				const contents = await this.provider.listItems(item.fullName);
+				if(contents.find(i => i.name === 'contents.c9r')) type = 'f';
+				else type = 'd';
+				shortened = true;
+			} else type = item.type;
+			if(type === 'f') items.push(new EncryptedFile(this, item.name, item.fullName, names[i], dirId, item.lastMod, shortened));
+			if(type === 'd') items.push(await EncryptedDir.open(this, item.name, item.fullName, names[i], dirId, item.lastMod, shortened));
 		}
 		return items;
 	}
@@ -368,7 +376,7 @@ export class Vault {
 		await this.provider.createDir(await this.getDir(dirId), true);
 		await this.provider.writeFile(`${dir}/dir.c9r`, dirId);
 		if (encName.length > this.vaultSettings.shorteningThreshold) await this.provider.writeFile(`${dir}/name.c9s`, encName);
-		return await EncryptedDir.open(this, encName, encDir, name, parent, new Date(), {dirId: dirId});
+		return await EncryptedDir.open(this, encName, encDir, name, parent, new Date(), false, {dirId: dirId});
 	}
 	
 	/**
