@@ -86,6 +86,13 @@ describe('Test opening an existing vault', () => {
 
 	test('Try listing items with long names', async () => {
 		const vault = await decrypt(provider, '12341234', 2);
-		const items = await vault.listItems('' as DirID);
+		const f = async () => {
+			const items = await vault.listItems('' as DirID);
+			const longItems = items.filter(i => i.decryptedName.length > 220);
+			const foundDir = longItems.some(i => i.decryptedName.length > 220 && i.decryptedName.includes('A'.repeat(220)))
+			const foundFile = longItems.some(i => i.decryptedName.length > 220 && i.decryptedName.includes('B'.repeat(220)) && i.decryptedName.endsWith('.txt'));
+			return foundDir && foundFile;
+		}
+		await expect(f()).resolves.toBe(true);
 	})
 });
