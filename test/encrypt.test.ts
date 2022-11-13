@@ -24,7 +24,15 @@ type SimpleItem = {
  * 1: Create a directory, and go into it. Name is a randomly generated UUID.
  * 2: Go up a directory. Unavailable if the current directory is root.
  */
-async function genRandomVault(provider: LocalStorageProvider, dir: string, id: number){
+
+function makeId(len: number) {
+	let result           = '';
+    const c       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+	for(let i = 0; i < len; i++) result += c[Math.floor(Math.random() * c.length)];
+    return result;
+}
+
+async function genRandomVault(provider: LocalStorageProvider, dir: string, id: number, len: number){
 	const v = await Vault.create(provider, dir, '12341234', {
 		name: `encTest${id}`
 	});
@@ -34,13 +42,13 @@ async function genRandomVault(provider: LocalStorageProvider, dir: string, id: n
 		const action = Math.floor(Math.random() * (path.length === 0 ? 2 : 3));
 		const last = path.length === 0 ? '' as DirID : path[path.length - 1];
 		if(action === 0){
-			const name = crypto.randomUUID();
+			const name = makeId(len);
 			const content = crypto.createHash('sha256').update(name).digest();
 			await EncryptedFile.encrypt(v, name, last, content);
 			if(tree[last]) tree[last].push({type: 'f', name: name});
 			else tree[last] = [{type: 'f', name: name}];
 		} else if(action === 1){
-			const name = crypto.randomUUID();
+			const name = makeId(len);
 			const dir = await v.createDirectory(name, last);
 			path.push(await dir.getDirId());
 			if(tree[last]) tree[last].push({type: 'd', name: name});
@@ -118,7 +126,11 @@ describe('Test creating a vault', () => {
 		await expect(testFunction()).resolves.toBe(true);
 	});
 	test('Create a random tree within a vault', async () => {
-		const sample = await genRandomVault(provider, dir, 3);
+		const sample = await genRandomVault(provider, dir, 3, 32);
+		await expect(verifyTree(sample.vault, sample.tree)).resolves.toBe(null);
+	});
+	test('Create a random tree with very long names within a vault', async () => {
+		const sample = await genRandomVault(provider, dir, 4, 777);
 		await expect(verifyTree(sample.vault, sample.tree)).resolves.toBe(null);
 	});
 });
