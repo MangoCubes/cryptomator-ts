@@ -311,6 +311,7 @@ export class Vault {
 	async decryptFileName(item: Item, parent: DirID): Promise<string>{
 		let name;
 		if(item.name.endsWith('.c9r')) name = item.name.slice(0, -4);
+		else if(item.name.endsWith('.c9s')) name = await this.provider.readFileString(item.fullName + '/name.c9s');
 		else name = item.name;
 		const decrypted = this.siv.open([new TextEncoder().encode(parent)], base64url.decode(name));
 		if(decrypted === null) throw new DecryptionError(DecryptionTarget.ItemName, item);
@@ -341,8 +342,16 @@ export class Vault {
 		const items: EncryptedItem[] = [];
 		for(let i = 0; i < enc.length; i++) {
 			const item = enc[i];
-			if(item.type === 'd') items.push(await EncryptedDir.open(this, item.name, item.fullName, names[i], dirId, item.lastMod));
-			if(item.type === 'f') items.push(new EncryptedFile(this, item.name, item.fullName, names[i], dirId, item.lastMod));
+			let type;
+			let shortened = false;
+			if(item.type === 'd' && item.fullName.endsWith('.c9s')){
+				const contents = await this.provider.listItems(item.fullName);
+				if(contents.find(i => i.name === 'contents.c9r')) type = 'f';
+				else type = 'd';
+				shortened = true;
+			} else type = item.type;
+			if(type === 'f') items.push(new EncryptedFile(this, item.name, item.fullName, names[i], dirId, item.lastMod, shortened));
+			if(type === 'd') items.push(await EncryptedDir.open(this, item.name, item.fullName, names[i], dirId, item.lastMod, shortened));
 		}
 		return items;
 	}
@@ -357,11 +366,18 @@ export class Vault {
 		const dirId = crypto.randomUUID() as DirID;
 		const encDir = await this.getDir(parent);
 		const encName = await this.encryptFileName(name, parent);
-		const dir = `${encDir}/${encName}.c9r`;
+		const needsToBeShortened = encName.length > this.vaultSettings.shorteningThreshold;
+		let dir;
+		if(needsToBeShortened){
+			const shortened = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(encName));
+			const shortDir = base64url.encode(new Uint8Array(shortened));
+			dir = `${encDir}/${shortDir}.c9s`
+		} else dir = `${encDir}/${encName}.c9r`;
 		await this.provider.createDir(dir, true);
 		await this.provider.createDir(await this.getDir(dirId), true);
 		await this.provider.writeFile(`${dir}/dir.c9r`, dirId);
-		return await EncryptedDir.open(this, encName, encDir, name, parent, new Date(), {dirId: dirId});
+		if (needsToBeShortened) await this.provider.writeFile(`${dir}/name.c9s`, encName);
+		return await EncryptedDir.open(this, encName, encDir, name, parent, new Date(), needsToBeShortened, {dirId: dirId});
 	}
 	
 	/**

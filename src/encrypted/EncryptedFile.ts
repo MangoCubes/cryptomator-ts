@@ -1,3 +1,4 @@
+import { base64url } from "jose";
 import { DecryptionTarget, InvalidSignatureError } from "../Errors";
 import { ContentKey, DirID, File, ItemPath } from "../types";
 import { Vault } from "../Vault";
@@ -85,13 +86,24 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		const encryptedDir = await vault.getDir(parentId);
 		await vault.provider.createDir(encryptedDir, true);
 		const fileName = await vault.encryptFileName(name, parentId);
-		const filePath = `${encryptedDir}/${fileName}.c9r` as ItemPath;
-		await vault.provider.writeFile(filePath, encrypted);
-		return new EncryptedFile(vault, fileName, filePath, name, parentId, new Date());
+		if(fileName.length > vault.vaultSettings.shorteningThreshold){
+			const shortened = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(fileName));
+			const shortDir = base64url.encode(new Uint8Array(shortened));
+			const fileDir = `${encryptedDir}/${shortDir}.c9s` as ItemPath;
+			await vault.provider.createDir(fileDir, true);
+			await vault.provider.writeFile(`${fileDir}/contents.c9r`, encrypted);
+			await vault.provider.writeFile(`${fileDir}/name.c9s`, fileName);
+			return new EncryptedFile(vault, fileName, fileDir, name, parentId, new Date(), true);
+		} else {
+			const fileDir = `${encryptedDir}/${fileName}.c9r` as ItemPath;
+			await vault.provider.writeFile(fileDir, encrypted);
+			return new EncryptedFile(vault, fileName, fileDir, name, parentId, new Date(), false);
+		}
+		
 	}
 
-	constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, parentId: DirID, lastMod: Date){
-		super(vault, name, fullName, decryptedName, parentId, lastMod);
+	constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, parentId: DirID, lastMod: Date, shortened: boolean){
+		super(vault, name, fullName, decryptedName, parentId, lastMod, shortened);
 		this.type = 'f';
 	}
 
@@ -139,6 +151,7 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 	 * @returns Uint8array of the encrypted file content
 	 */
 	async readEncryptedFile(){
+		if(this.shortened) return await this.vault.provider.readFile(this.fullName + '/contents.c9r');
 		return await this.vault.provider.readFile(this.fullName);
 	}
 
