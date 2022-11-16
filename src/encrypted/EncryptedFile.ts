@@ -90,6 +90,7 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 			const shortened = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(fileName));
 			const shortDir = base64url.encode(new Uint8Array(shortened));
 			const fileDir = `${encryptedDir}/${shortDir}.c9s` as ItemPath;
+			await vault.provider.createDir(fileDir, true);
 			await vault.provider.writeFile(`${fileDir}/contents.c9r`, encrypted);
 			await vault.provider.writeFile(`${fileDir}/name.c9s`, fileName);
 			return new EncryptedFile(vault, fileName, fileDir, name, parentId, new Date(), true);
