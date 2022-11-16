@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "Cryptomator library",
   "main": "./dist/index.js",
+  "typings": "./dist/index.d.ts",
   "author": "MangoCubes <10383115+MangoCubes@users.noreply.github.com>",
   "license": "MIT",
   "private": true,
