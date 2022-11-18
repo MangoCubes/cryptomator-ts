@@ -1,6 +1,5 @@
 import { AES } from "@stablelib/aes";
 import { SIV } from "@stablelib/siv";
-import b32 from "base32-encoding";
 import { scrypt } from "scrypt-js";
 import { DataProvider } from "./DataProvider";
 import { DirID, EncryptionKey, Item, ItemPath, MACKey } from "./types";
@@ -10,6 +9,7 @@ import { EncryptedItem } from "./encrypted/EncryptedItemBase";
 import { EncryptedDir } from "./encrypted/EncryptedDir";
 import { EncryptedFile } from "./encrypted/EncryptedFile";
 import Base64 from "js-base64";
+import b32 from 'base32-encode'
 
 type VaultConfigHeader = {
 	kid: string;
@@ -278,7 +278,7 @@ export class Vault {
 	async getDir(dirId: DirID){
 		const sivId = this.siv.seal([], new TextEncoder().encode(dirId));
 		const ab = await crypto.subtle.digest('SHA-1', sivId);
-		const dirHash = b32.stringify(new Uint8Array(ab), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567');
+		const dirHash = b32(ab, 'RFC4648');
 		return `${this.dir}/d/${dirHash.substring(0, 2)}/${dirHash.substring(2)}` as ItemPath;
 	}
 
