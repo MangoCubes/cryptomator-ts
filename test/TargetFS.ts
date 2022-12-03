@@ -86,7 +86,6 @@ export class TargetFS{
 		while(folders.length){
 			const current = folders.pop() as DirID;
 			const items = this.tree[current];
-			console.log(items)
 			for(const i of items) if(i.type === 'd') folders.push(i.id);
 			delete this.tree[current];
 		}

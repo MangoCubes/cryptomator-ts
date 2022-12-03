@@ -7,6 +7,7 @@ import { DirID } from '../src/types';
 import { DecryptionError, DecryptionTarget } from '../src/Errors';
 import crypto from 'node:crypto';
 import { TargetFS } from './TargetFS';
+import { EncryptedDir } from '../src/encrypted/EncryptedDir';
 
 async function randomBuffer(size: number): Promise<Uint8Array>{
 	const arr = new Uint8Array(size);
@@ -62,5 +63,27 @@ describe('Test creating a vault', () => {
 	test('Create a random tree with very long names within a vault', async () => {
 		const sample = await TargetFS.create(provider, dir, 4, 777);
 		await expect(sample.verify()).resolves.toBe(null);
+	});
+	test('Create a random tree within a vault, and delete some folders at random', async () => {
+		const sample = await TargetFS.create(provider, dir, 5, 32);
+		const f = async () => {
+			for(const k in sample.tree){
+				// Open a directory with parent ID of dirId
+				const dirId = k as DirID;
+				for(const item of sample.tree[dirId]){
+					if(item.type === 'f') continue;
+					// Randomly select a directory within that parent directory
+					if(Math.floor(Math.random() * 5) === 0){
+						sample.delFolder(dirId, item.id);
+						const items = await sample.vault.listItems(dirId);
+						const dir = items.find(i => i.decryptedName === item.name) as EncryptedDir;
+						if(dir) await dir.deleteDir();
+						else throw new Error(`Item not found: ${dirId}`);
+					}
+				}
+			}
+			return await sample.verify();
+		}
+		await expect(f()).resolves.toBe(null);
 	});
 });
