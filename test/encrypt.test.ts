@@ -58,11 +58,11 @@ describe('Test creating a vault', () => {
 	});
 	test('Create a random tree within a vault', async () => {
 		const sample = await TargetFS.create(provider, dir, 3, 32);
-		await expect(sample.verify()).resolves.toBe(null);
+		await expect(sample.verify()).resolves.toBe('Identical');
 	});
 	test('Create a random tree with very long names within a vault', async () => {
 		const sample = await TargetFS.create(provider, dir, 4, 777);
-		await expect(sample.verify()).resolves.toBe(null);
+		await expect(sample.verify()).resolves.toBe('Identical');
 	});
 	test('Create a random tree within a vault, and delete some folders at random', async () => {
 		const sample = await TargetFS.create(provider, dir, 5, 32);
@@ -84,6 +84,6 @@ describe('Test creating a vault', () => {
 			}
 			return await sample.verify();
 		}
-		await expect(f()).resolves.toBe(null);
+		await expect(f()).resolves.toBe('Identical');
 	});
 });
