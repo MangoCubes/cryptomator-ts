@@ -5,8 +5,12 @@ import { Vault } from "../src/Vault";
 import crypto from 'node:crypto';
 
 type SimpleItem = {
-	type: 'd' | 'f';
+	type: 'f';
 	name: string;
+} | {
+	type: 'd';
+	name: string;
+	id: DirID;
 }
 
 function makeId(len: number) {
@@ -45,9 +49,10 @@ export class TargetFS{
 			} else if(action === 1){
 				const name = makeId(len);
 				const dir = await v.createDirectory(name, last);
-				path.push(await dir.getDirId());
-				if(tree[last]) tree[last].push({type: 'd', name: name});
-				else tree[last] = [{type: 'd', name: name}];
+				const dirId = await dir.getDirId();
+				path.push(dirId);
+				if(tree[last]) tree[last].push({type: 'd', name: name, id: dirId});
+				else tree[last] = [{type: 'd', name: name, id: dirId}];
 			} else if(action === 2) path.pop();
 		}
 		return new TargetFS(v, tree);
@@ -73,6 +78,17 @@ export class TargetFS{
 			}
 		}
 		for(const k in this.tree) if(this.tree[k as DirID].length !== 0) return this.tree[k as DirID];
+		return null;
+	}
+
+	delFolder(id: DirID){
+		const folders = [id];
+		while(folders.length){
+			const current = folders.pop() as DirID;
+			const items = this.tree[current];
+			for(const i of items) if(i.type === 'd') folders.push(i.id);
+			delete this.tree[current];
+		}
 		return null;
 	}
 }
