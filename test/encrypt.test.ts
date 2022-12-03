@@ -86,4 +86,26 @@ describe('Test creating a vault', () => {
 		}
 		await expect(f()).resolves.toBe('Identical');
 	});
+	test('Create a random tree within a vault containing files and folders with long name, and delete some folders at random', async () => {
+		const sample = await TargetFS.create(provider, dir, 6, 888);
+		const f = async () => {
+			for(const k in sample.tree){
+				// Open a directory with parent ID of dirId
+				const dirId = k as DirID;
+				for(const item of sample.tree[dirId]){
+					if(item.type === 'f') continue;
+					// Randomly select a directory within that parent directory
+					if(Math.floor(Math.random() * 5) === 0){
+						sample.delFolder(dirId, item.id);
+						const items = await sample.vault.listItems(dirId);
+						const dir = items.find(i => i.decryptedName === item.name) as EncryptedDir;
+						if(dir) await dir.deleteDir();
+						else throw new Error(`Item not found: ${dirId}`);
+					}
+				}
+			}
+			return await sample.verify();
+		}
+		await expect(f()).resolves.toBe('Identical');
+	});
 });

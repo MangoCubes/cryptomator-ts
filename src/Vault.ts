@@ -373,8 +373,10 @@ export class Vault {
 			const shortDir = base64url.encode(new Uint8Array(shortened));
 			dir = `${encDir}/${shortDir}.c9s`
 		} else dir = `${encDir}/${encName}.c9r`;
+		const dirFolder = await this.getDir(dirId);
 		await this.provider.createDir(dir, true);
-		await this.provider.createDir(await this.getDir(dirId), true);
+		await this.provider.createDir(dirFolder, true);
+		// await this.provider.writeFile(`${dirFolder}/dirid.c9r`, ) TODO: https://docs.cryptomator.org/en/latest/security/architecture/#backup-directory-ids
 		await this.provider.writeFile(`${dir}/dir.c9r`, dirId);
 		if (needsToBeShortened) await this.provider.writeFile(`${dir}/name.c9s`, encName);
 		return await EncryptedDir.open(this, encName, encDir, name, parent, new Date(), needsToBeShortened, {dirId: dirId});
