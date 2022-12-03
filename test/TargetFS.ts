@@ -62,22 +62,29 @@ export class TargetFS{
 		const folders = ['' as DirID];
 		while(folders.length){
 			const current = folders.pop() as DirID;
-			const items = await this.vault.listItems(current);
-			for(const item of items){
-				if(item.type === 'd') folders.push(await item.getDirId());
-				const index = this.tree[item.parentId].findIndex(i => i.name === item.decryptedName && i.type === item.type);
-				if(index === -1) return item;
-				else {
-					if(item.type === 'f'){
-						const content = crypto.createHash('sha256').update(this.tree[item.parentId][index].name).digest();
-						const decrypted = await item.decrypt();
-						if(Buffer.compare(content, decrypted.content) !== 0) return item;
-					}
-					this.tree[item.parentId].splice(index, 1);
+			const vaultItems = await this.vault.listItems(current);
+			const mockItems = this.tree[current];
+			if(vaultItems.length !== mockItems.length) return current;
+			vaultItems.sort((a, b) => a.decryptedName.localeCompare(b.decryptedName));
+			mockItems.sort((a, b) => a.name.localeCompare(b.name));
+			for(let i = 0; i < vaultItems.length; i++){
+				const a = vaultItems[i];
+				const b = mockItems[i];
+				if(b.name !== a.decryptedName || b.type !== a.type) return [a, b];
+				if(a.type === 'd' && b.type === 'd'){
+					const dirA = await a.getDirId();
+					const dirB = b.id;
+					if(dirA !== dirB) return [dirA, dirB];
+					folders.push(dirA);
+				}
+				if(a.type === 'f'){
+					const content = crypto.createHash('sha256').update(a.decryptedName).digest();
+					const decrypted = await a.decrypt();
+					if(Buffer.compare(content, decrypted.content) !== 0) return a;
 				}
 			}
 		}
-		for(const k in this.tree) if(this.tree[k as DirID].length !== 0) return this.tree[k as DirID];
+		// for(const k in this.tree) if(this.tree[k as DirID].length !== 0) return this.tree[k as DirID];
 		return null;
 	}
 
