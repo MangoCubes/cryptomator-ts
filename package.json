@@ -10,7 +10,7 @@
   "dependencies": {
     "@stablelib/aes": "^1.0.1",
     "@stablelib/siv": "^1.0.2",
-    "base32-encode": "^2.0.0",
+    "base32-encode": "^1.2.0",
     "jose": "^4.10.0",
     "js-base64": "^3.7.2",
     "scrypt-js": "^3.0.1"
