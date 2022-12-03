@@ -36,7 +36,7 @@ export class TargetFS{
 			name: `encTest${id}`
 		});
 		const path: DirID[] = [];
-		const tree: {[key: string]: SimpleItem[]} = {};
+		const tree: {[key: string]: SimpleItem[]} = {'': []};
 		for(let i = 0; i < 1000; i++){
 			const action = Math.floor(Math.random() * (path.length === 0 ? 2 : 3));
 			const last = path.length === 0 ? '' as DirID : path[path.length - 1];
@@ -51,8 +51,8 @@ export class TargetFS{
 				const dir = await v.createDirectory(name, last);
 				const dirId = await dir.getDirId();
 				path.push(dirId);
-				if(tree[last]) tree[last].push({type: 'd', name: name, id: dirId});
-				else tree[last] = [{type: 'd', name: name, id: dirId}];
+				tree[last].push({type: 'd', name: name, id: dirId});
+				tree[dirId] = [];
 			} else if(action === 2) path.pop();
 		}
 		return new TargetFS(v, tree);
@@ -81,13 +81,18 @@ export class TargetFS{
 		return null;
 	}
 
-	delFolder(id: DirID){
+	delFolder(parent: DirID, id: DirID){
 		const folders = [id];
 		while(folders.length){
 			const current = folders.pop() as DirID;
 			const items = this.tree[current];
+			console.log(items)
 			for(const i of items) if(i.type === 'd') folders.push(i.id);
 			delete this.tree[current];
+		}
+		for(let i = 0; i < this.tree[parent].length; i++){
+			const dir = this.tree[parent][i];
+			if(dir.type === 'd' && dir.id === id) this.tree[parent].splice(i, 1);
 		}
 		return null;
 	}
