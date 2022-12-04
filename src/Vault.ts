@@ -209,8 +209,12 @@ export class Vault {
 			}
 		) {
 		if (dir.endsWith('/')) dir = dir.slice(0, -1);
-		const token = await provider.readFileString(options?.vaultFile ? options.vaultFile : dir + '/vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
-		const mk = JSON.parse(await provider.readFileString(options?.masterkeyFile ? options.masterkeyFile : dir + '/masterkey.cryptomator')) as Masterkey;
+		const loadTask = [
+			provider.readFileString(options?.vaultFile ? options.vaultFile : dir + '/vault.cryptomator'),
+			provider.readFileString(options?.masterkeyFile ? options.masterkeyFile : dir + '/masterkey.cryptomator')
+		];
+		const [token, rawMk] = await Promise.all(loadTask);
+		const mk = JSON.parse(rawMk) as Masterkey;
 		if(options?.onKeyLoad) options.onKeyLoad();
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), Base64.toUint8Array(mk.scryptSalt), mk.scryptCostParam, mk.scryptBlockSize, 1, 32);
 		const kek = await crypto.subtle.importKey(
