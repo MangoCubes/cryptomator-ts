@@ -193,6 +193,7 @@ export class Vault {
 	 * @param options Various options to pass to decrypting vault
 	 * @param options.vaultFile: Absolute directory of the vault.cryptomator file
 	 * @param options.masterkeyFile: Absolute directory of the masterkey.cryptomator file
+	 * @param options.onKeyLoad: Callback that is called when the vault.cryptomator and masterkey.cryptomator is loaded
 	 * @throws DecryptionError if the given password is wrong
 	 * @throws InvalidSignatureError if the integrity of vault.cryptomator file cannot be verified
 	 */
@@ -204,11 +205,13 @@ export class Vault {
 			options?: {
 				vaultFile?: ItemPath
 				masterkeyFile?: ItemPath
+				onKeyLoad?: () => void
 			}
 		) {
 		if (dir.endsWith('/')) dir = dir.slice(0, -1);
 		const token = await provider.readFileString(options?.vaultFile ? options.vaultFile : dir + '/vault.cryptomator'); //The JWT is signed using the 512 bit raw masterkey
 		const mk = JSON.parse(await provider.readFileString(options?.masterkeyFile ? options.masterkeyFile : dir + '/masterkey.cryptomator')) as Masterkey;
+		if(options?.onKeyLoad) options.onKeyLoad();
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), Base64.toUint8Array(mk.scryptSalt), mk.scryptCostParam, mk.scryptBlockSize, 1, 32);
 		const kek = await crypto.subtle.importKey(
 			'raw',
@@ -402,8 +405,9 @@ export class Vault {
 	/**
 	 * Delete a directory the EncryptedDir corresponds to. Anything within this directory will be deleted recursively. Anything deleted because of this should never be used.
 	 * @param d EncryptedDir object of the directory to delete
+	 * @param onDiscover A callback that is called whenever a directory has been searched successfully. If toDiscover is 0, it can be assumed that delete operation is in progress.
 	 */
-	async deleteDir(d: EncryptedDir) {
+	async deleteDir(d: EncryptedDir, onDiscover?: (discovered: number, toDiscover: number) => void) {
 		const dirIdList: DirID[] = [await d.getDirId()];
 		const dirList: string[] = [d.fullName];
 		while(dirIdList.length){
@@ -413,6 +417,7 @@ export class Vault {
 				if(i.type === 'd') dirIdList.push(await i.getDirId());
 				dirList.push(i.fullName);
 			}
+			if(onDiscover) onDiscover(dirList.length, dirIdList.length);
 		}
 		const delOps: Promise<void>[] = [];
 		for(const d of dirList) delOps.push(this.provider.removeDir(d));
