@@ -40,6 +40,17 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		return result;
 	}
 
+
+	/**
+	 * Encrypt a file, and upload it to the vault
+	 * @param vault The vault this item will be encrypted and uploaded to
+	 * @param name Name of the file to encrypt
+	 * @param parent Directory ID of the parent ID. Can be EncryptedDir, DirID, or null (which indicates root). 
+	 * @param content Content of the file prior to encryption
+	 * @param callbacks.encryption Callback that will be called whenever a chunk gets encrypted
+	 * @param callbacks.upload Callback that will be called whenever data provider invokes callback in upload
+	 * @returns Corresponding EncryptedFile object
+	 */
 	static async encrypt(
 		vault: Vault,
 		name: string,
@@ -160,6 +171,7 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 
 	/**
 	 * Read the encrypted file in binary
+	 * @param download Callback that will be called every time the data provider calls progress callback
 	 * @returns Uint8array of the encrypted file content
 	 */
 	async readEncryptedFile(download?: ProgressCallback){
@@ -202,6 +214,8 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 
 	/**
 	 * Decrypt file content
+	 * @param callbacks.download Callback that will be called every time the data provider calls progress callback
+	 * @param callbacks.decrypt Callback that will be called every time a chunk is decrypted
 	 * @returns Decrypted file content in Uint8Array
 	 */
 	async decryptContent(callbacks?: {
@@ -222,6 +236,8 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 
 	/**
 	 * Wrapper function for decryptContent that returns name and content
+	 * @param callbacks.download Callback that will be called every time the data provider calls progress callback
+	 * @param callbacks.decrypt Callback that will be called every time a chunk is decrypted
 	 * @returns An object with two properties, title and content (Uint8Array)
 	 */
 	async decrypt(callbacks?: {
@@ -236,12 +252,17 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 
 	/**
 	 * Wrapper function for decryptContent that returns name and content converted into string
+	 * @param callbacks.download Callback that will be called every time the data provider calls progress callback
+	 * @param callbacks.decrypt Callback that will be called every time a chunk is decrypted
 	 * @returns An object with two properties, title and content (string)
 	 */
-	async decryptAsString(){
+	async decryptAsString(callbacks?: {
+		download?: ProgressCallback,
+		decrypt?: ProgressCallback
+	}){
 		return {
 			title: this.decryptedName,
-			content: new TextDecoder().decode(await this.decryptContent())
+			content: new TextDecoder().decode(await this.decryptContent(callbacks))
 		};
 	}
 
