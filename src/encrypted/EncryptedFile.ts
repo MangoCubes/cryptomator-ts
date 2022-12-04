@@ -1,4 +1,5 @@
 import { base64url } from "jose";
+import { ProgressCallback } from "../DataProvider";
 import { DecryptionTarget, InvalidSignatureError } from "../Errors";
 import { ContentKey, DirID, File, ItemPath } from "../types";
 import { Vault } from "../Vault";
@@ -39,7 +40,16 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		return result;
 	}
 
-	static async encrypt(vault: Vault, name: string, parent: DirID | null | EncryptedDir, content: Uint8Array | string): Promise<EncryptedFile>{
+	static async encrypt(
+		vault: Vault,
+		name: string,
+		parent: DirID | null | EncryptedDir,
+		content: Uint8Array | string,
+		callbacks?: {
+			encryption?: ProgressCallback,
+			upload?: ProgressCallback
+		}
+	): Promise<EncryptedFile>{
 		if(typeof(content) === 'string') content = new TextEncoder().encode(content);
 		const nonce = crypto.getRandomValues(new Uint8Array(16));
 		const contentKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
@@ -71,12 +81,14 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 		const sig = new Uint8Array(await crypto.subtle.sign('HMAC', vault.macKey, encrypted.slice(0, 56)));
 		encrypted.set(sig, 56);
 		const chunkSize = 32768; // 32KiB
-		for(let i = 0; i * chunkSize < content.byteLength; i++){
+		const iterCount = Math.ceil(content.byteLength / chunkSize);
+		for(let i = 0; i < iterCount; i++){
 			const chunk = content.slice(i * chunkSize, (i + 1) * chunkSize);
 			encrypted = concat(encrypted, await EncryptedFile.encryptChunk(vault, {
 				contentKey: contentKey,
 				nonce: nonce
 			}, chunk, i));
+			if(callbacks?.encryption) callbacks.encryption(i, iterCount);
 		}
 		
 		let parentId: DirID;
@@ -91,12 +103,12 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 			const shortDir = base64url.encode(new Uint8Array(shortened));
 			const fileDir = `${encryptedDir}/${shortDir}.c9s` as ItemPath;
 			await vault.provider.createDir(fileDir, true);
-			await vault.provider.writeFile(`${fileDir}/contents.c9r`, encrypted);
+			await vault.provider.writeFile(`${fileDir}/contents.c9r`, encrypted, callbacks?.upload);
 			await vault.provider.writeFile(`${fileDir}/name.c9s`, fileName);
 			return new EncryptedFile(vault, fileName, fileDir, name, parentId, new Date(), true);
 		} else {
 			const fileDir = `${encryptedDir}/${fileName}.c9r` as ItemPath;
-			await vault.provider.writeFile(fileDir, encrypted);
+			await vault.provider.writeFile(fileDir, encrypted, callbacks?.upload);
 			return new EncryptedFile(vault, fileName, fileDir, name, parentId, new Date(), false);
 		}
 		
@@ -150,9 +162,9 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 	 * Read the encrypted file in binary
 	 * @returns Uint8array of the encrypted file content
 	 */
-	async readEncryptedFile(){
-		if(this.shortened) return await this.vault.provider.readFile(this.fullName + '/contents.c9r');
-		return await this.vault.provider.readFile(this.fullName);
+	async readEncryptedFile(download?: ProgressCallback){
+		if(this.shortened) return await this.vault.provider.readFile(this.fullName + '/contents.c9r', download);
+		return await this.vault.provider.readFile(this.fullName, download);
 	}
 
 	/**
@@ -192,12 +204,16 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 	 * Decrypt file content
 	 * @returns Decrypted file content in Uint8Array
 	 */
-	async decryptContent(){
-		const fileData = await this.readEncryptedFile();
+	async decryptContent(callbacks?: {
+		download?: ProgressCallback,
+		decrypt?: ProgressCallback
+	}){
+		const fileData = await this.readEncryptedFile(callbacks?.download);
 		const header = await this.decryptHeader(fileData);
 		const chunkSize = 32768 + 48; // 32KiB + 48 bytes
 		let decrypted = new Uint8Array();
-		for(let i = 0; i * chunkSize + 88 < fileData.byteLength; i++){
+		const iterCount = Math.ceil((fileData.byteLength - 88) / chunkSize);
+		for(let i = 0; i < iterCount; i++){
 			const chunk = fileData.slice(i * chunkSize + 88, (i + 1) * chunkSize + 88);
 			decrypted = concat(decrypted, await this.decryptChunk(header, chunk, i));
 		}
@@ -208,10 +224,13 @@ export class EncryptedFile extends EncryptedItemBase implements File{
 	 * Wrapper function for decryptContent that returns name and content
 	 * @returns An object with two properties, title and content (Uint8Array)
 	 */
-	async decrypt(){
+	async decrypt(callbacks?: {
+		download?: ProgressCallback,
+		decrypt?: ProgressCallback
+	}){
 		return {
 			title: this.decryptedName,
-			content: await this.decryptContent()
+			content: await this.decryptContent(callbacks)
 		};
 	}
 

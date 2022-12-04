@@ -1,10 +1,12 @@
 import { Item } from "./types";
 
+export type ProgressCallback = (current: number, total: number) => void;
+
 export type DataProvider = {
-	readFileString: (path: string) => Promise<string>;
+	readFileString: (path: string, progress?: ProgressCallback) => Promise<string>;
 	listItems: (path: string) => Promise<Item[]>;
-	readFile: (path: string) => Promise<Uint8Array>;
-	writeFile: (path: string, content: Uint8Array | string) => Promise<void>;
+	readFile: (path: string, progress?: ProgressCallback) => Promise<Uint8Array>;
+	writeFile: (path: string, content: Uint8Array | string, progress?: ProgressCallback) => Promise<void>;
 	createDir: (path: string, recursive?: boolean) => Promise<void>;
 	removeFile: (path: string) => Promise<void>;
 	/**
