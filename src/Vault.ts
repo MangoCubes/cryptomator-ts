@@ -69,6 +69,12 @@ type CreateVaultOpts = ({
 	createHere: true;
 }) & Partial<VaultSettings>;
 
+export enum CreationStep{
+	DupeCheck,
+	KeyGen,
+	CreatingFiles,
+	CreatingRoot
+}
 
 /**
  * Cryptomator vault object
@@ -99,9 +105,11 @@ export class Vault {
 		provider: DataProvider,
 		dir: string,
 		password: string,
-		options: CreateVaultOpts
+		options: CreateVaultOpts,
+		callback?: (step: CreationStep) => void
 	) {
 		let name: string;
+		if(callback) callback(CreationStep.DupeCheck);
 		if (dir.endsWith('/')) dir = dir.slice(0, -1);
 		if (options.name) {
 			dir = dir + '/' + options.name;
@@ -119,11 +127,13 @@ export class Vault {
 			]);
 			name = dir.split('/').at(-1) ?? 'Root';
 		}
+		if(callback) callback(CreationStep.KeyGen);
 		const sBlockSize = options.scryptBlockSize ?? 8;
 		const sCostParam = options.scryptCostParam ?? 32768;
 		const format = options.format ?? 8;
 		const salt = crypto.getRandomValues(new Uint8Array(32));
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), salt, sCostParam, sBlockSize, 1, 32);
+		if(callback) callback(CreationStep.CreatingFiles);
 		const encKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
 		const macKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
 		const buffer = new Uint8Array(64);
@@ -140,7 +150,6 @@ export class Vault {
 			name: 'HMAC',
 			hash: {name: 'SHA-256'}
 		}, true, ['sign']) as MACKey;
-		
 
 		encKeyBuffer.fill(0);
 		macKeyBuffer.fill(0);
@@ -185,6 +194,7 @@ export class Vault {
 		await provider.writeFile(`${dir}/masterkey.cryptomator`, JSON.stringify(mk));
 		await provider.writeFile(`${dir}/vault.cryptomator`, vaultFile);
 		await provider.createDir(`${dir}/d`);
+		if(callback) callback(CreationStep.CreatingRoot);
 
 		const vault = new Vault(provider, dir, name, encKey, macKey, siv, {
 			format: options.format ?? 8,
