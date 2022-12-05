@@ -13,4 +13,5 @@ export type DataProvider = {
 	 * Should be able to delete recursively
 	 */
 	removeDir: (path: string) => Promise<void>;
+	exists: (path: string) => Promise<boolean>;
 }

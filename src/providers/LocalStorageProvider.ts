@@ -1,9 +1,12 @@
 import { DataProvider } from "../DataProvider";
 import { Item, ItemPath } from "../types";
-import { promises as fs } from "fs";
+import { promises as fs, existsSync} from "fs";
 import * as p from "path";
 
 export class LocalStorageProvider implements DataProvider{
+	async exists (path: string){
+		return existsSync(path);
+	}
 	async removeFile(path: string): Promise<void>{
 		await fs.rm(path);
 	}
