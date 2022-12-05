@@ -77,7 +77,7 @@ export class Vault {
 	private constructor(
 		public provider: DataProvider,
 		public dir: string,
-		public name: string | null,
+		public name: string,
 		public encKey: EncryptionKey,
 		public macKey: MACKey,
 		private siv: SIV,
@@ -104,11 +104,13 @@ export class Vault {
 		const sBlockSize = options.scryptBlockSize ?? 8;
 		const sCostParam = options.scryptCostParam ?? 32768;
 		const format = options.format ?? 8;
+		let name: string;
 		if (dir.endsWith('/')) dir = dir.slice(0, -1);
 		if (options.name) {
+			name = options.name;
 			dir = dir + '/' + options.name;
 			await provider.createDir(dir, true);
-		}
+		} else name = dir.split('/').at(-1) ?? 'Root';
 		const salt = crypto.getRandomValues(new Uint8Array(32));
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), salt, sCostParam, sBlockSize, 1, 32);
 		const encKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
@@ -173,7 +175,7 @@ export class Vault {
 		await provider.writeFile(`${dir}/vault.cryptomator`, vaultFile);
 		await provider.createDir(`${dir}/d`);
 
-		const vault = new Vault(provider, dir, options.name, encKey, macKey, siv, {
+		const vault = new Vault(provider, dir, name, encKey, macKey, siv, {
 			format: options.format ?? 8,
 			shorteningThreshold: options.shorteningThreshold ?? 220,
 			scryptCostParam: sCostParam,
@@ -202,7 +204,7 @@ export class Vault {
 			provider: DataProvider,
 			dir: string,
 			password: string,
-			name: string | null,
+			name: string,
 			options?: {
 				vaultFile?: ItemPath
 				masterkeyFile?: ItemPath
