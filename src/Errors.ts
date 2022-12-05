@@ -27,3 +27,8 @@ export class DecryptionError<T extends Exclude<DecryptionTarget, DecryptionTarge
 	}
 }
 
+export class ExistsError extends Error{
+	constructor(public which: string){
+		super();
+	}
+}

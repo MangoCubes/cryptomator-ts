@@ -4,7 +4,7 @@ import { scrypt } from "scrypt-js";
 import { DataProvider } from "./DataProvider";
 import { DirID, EncryptionKey, Item, ItemPath, MACKey } from "./types";
 import { base64url, jwtVerify, SignJWT } from "jose";
-import { DecryptionError, DecryptionTarget, InvalidSignatureError } from "./Errors";
+import { DecryptionError, DecryptionTarget, ExistsError, InvalidSignatureError } from "./Errors";
 import { EncryptedItem } from "./encrypted/EncryptedItemBase";
 import { EncryptedDir } from "./encrypted/EncryptedDir";
 import { EncryptedFile } from "./encrypted/EncryptedFile";
@@ -101,16 +101,27 @@ export class Vault {
 		password: string,
 		options: CreateVaultOpts
 	) {
-		const sBlockSize = options.scryptBlockSize ?? 8;
-		const sCostParam = options.scryptCostParam ?? 32768;
-		const format = options.format ?? 8;
 		let name: string;
 		if (dir.endsWith('/')) dir = dir.slice(0, -1);
 		if (options.name) {
-			name = options.name;
 			dir = dir + '/' + options.name;
+			if(await provider.exists(dir)) throw new ExistsError(dir);
+			name = options.name;
 			await provider.createDir(dir, true);
-		} else name = dir.split('/').at(-1) ?? 'Root';
+		} else {
+			const checkExists = async (dir: string) => {
+				if(await provider.exists(dir)) throw new ExistsError(dir);
+			}
+			await Promise.all([
+				checkExists(`${dir}/masterkey.cryptomator`),
+				checkExists(`${dir}/vault.cryptomator`),
+				checkExists(`${dir}/d`)
+			]);
+			name = dir.split('/').at(-1) ?? 'Root';
+		}
+		const sBlockSize = options.scryptBlockSize ?? 8;
+		const sCostParam = options.scryptCostParam ?? 32768;
+		const format = options.format ?? 8;
 		const salt = crypto.getRandomValues(new Uint8Array(32));
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), salt, sCostParam, sBlockSize, 1, 32);
 		const encKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
