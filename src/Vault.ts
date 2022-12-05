@@ -10,6 +10,7 @@ import { EncryptedDir } from "./encrypted/EncryptedDir";
 import { EncryptedFile } from "./encrypted/EncryptedFile";
 import Base64 from "js-base64";
 import b32 from 'base32-encode'
+import { v4 } from "uuid";
 
 type VaultConfigHeader = {
 	kid: string;
@@ -159,7 +160,7 @@ export class Vault {
 		const vaultFile = await new SignJWT({
 			format: format,
 			shorteningThreshold: options.shorteningThreshold ?? 220,
-			jti: crypto.randomUUID(),
+			jti: v4(),
 			cipherCombo: 'SIV_CTRMAC'
 		}).setProtectedHeader({
 			alg: 'HS256',
