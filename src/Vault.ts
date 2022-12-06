@@ -125,7 +125,8 @@ export class Vault {
 				checkExists(`${dir}/vault.cryptomator`),
 				checkExists(`${dir}/d`)
 			]);
-			name = dir.split('/').at(-1) ?? 'Root';
+			const splitted = dir.split('/');
+			name = splitted[splitted.length - 1] ?? 'Root';
 		}
 		if(callback) callback(CreationStep.KeyGen);
 		const sBlockSize = options.scryptBlockSize ?? 8;
