@@ -395,7 +395,7 @@ export class Vault {
 	 * @returns New EncryptedDir object that corresponds to the new directory
 	 */
 	async createDirectory(name: string, parent: DirID){
-		const dirId = crypto.randomUUID() as DirID;
+		const dirId = v4() as DirID;
 		const encDir = await this.getDir(parent);
 		const encName = await this.encryptFileName(name, parent);
 		const needsToBeShortened = encName.length > this.vaultSettings.shorteningThreshold;
