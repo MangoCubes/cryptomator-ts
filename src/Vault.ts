@@ -191,22 +191,34 @@ export class Vault {
 			typ: 'JWT'
 		}).sign(buffer);
 		buffer.fill(0);
+		try {
+			await Promise.all([
+				provider.writeFile(`${dir}/masterkey.cryptomator`, JSON.stringify(mk)),
+				provider.writeFile(`${dir}/vault.cryptomator`, vaultFile),
+				provider.createDir(`${dir}/d`)
+			]);
+			if(callback) callback(CreationStep.CreatingRoot);
 
-		await provider.writeFile(`${dir}/masterkey.cryptomator`, JSON.stringify(mk));
-		await provider.writeFile(`${dir}/vault.cryptomator`, vaultFile);
-		await provider.createDir(`${dir}/d`);
-		if(callback) callback(CreationStep.CreatingRoot);
-
-		const vault = new Vault(provider, dir, name, encKey, macKey, siv, {
-			format: options.format ?? 8,
-			shorteningThreshold: options.shorteningThreshold ?? 220,
-			scryptCostParam: sCostParam,
-			scryptBlockSize: sBlockSize
-		});
-		const rootDir = await vault.getRootDir();
-		await provider.createDir(rootDir, true);
-
-		return vault;
+			const vault = new Vault(provider, dir, name, encKey, macKey, siv, {
+				format: options.format ?? 8,
+				shorteningThreshold: options.shorteningThreshold ?? 220,
+				scryptCostParam: sCostParam,
+				scryptBlockSize: sBlockSize
+			});
+			const rootDir = await vault.getRootDir();
+			await provider.createDir(rootDir, true);
+		
+			return vault;
+		} catch (e) {
+			if(name) await provider.removeDir(dir);
+			else await Promise.allSettled([
+				provider.removeFile(`${dir}/masterkey.cryptomator`),
+				provider.removeFile(`${dir}/vault.cryptomator`),
+				provider.removeDir(`${dir}/d`)
+			]);
+			throw e;
+		}
+		
 	}
 
 	/**
@@ -406,15 +418,23 @@ export class Vault {
 			dir = `${encDir}/${shortDir}.c9s`
 		} else dir = `${encDir}/${encName}.c9r`;
 		const dirFolder = await this.getDir(dirId);
-		await Promise.all([
-			this.provider.createDir(dir, true),
-			this.provider.createDir(dirFolder, true)
-		]);
-		const tasks = [
-			this.provider.writeFile(`${dir}/dir.c9r`, dirId)
-		];
-		if (needsToBeShortened) tasks.push(this.provider.writeFile(`${dir}/name.c9s`, encName));
-		await Promise.all(tasks);
+		try{
+			await Promise.all([
+				this.provider.createDir(dir, true),
+				this.provider.createDir(dirFolder, true)
+			]);
+			const tasks = [
+				this.provider.writeFile(`${dir}/dir.c9r`, dirId)
+			];
+			if (needsToBeShortened) tasks.push(this.provider.writeFile(`${dir}/name.c9s`, encName));
+			await Promise.all(tasks);
+		} catch (e) {
+			await Promise.allSettled([
+				this.provider.removeDir(dir),
+				this.provider.removeDir(dirFolder)
+			]);
+			throw e;
+		}
 		return await EncryptedDir.open(this, encName, encDir, name, parent, new Date(), needsToBeShortened, {dirId: dirId});
 		// await this.provider.writeFile(`${dirFolder}/dirid.c9r`, ) TODO: https://docs.cryptomator.org/en/latest/security/architecture/#backup-directory-ids
 	}

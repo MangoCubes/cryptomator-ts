@@ -26,8 +26,8 @@ describe('Test creating a vault', () => {
 		await Vault.create(provider, dir, '12341234', {
 			name: 'encTest1'
 		});
-		await expect(Vault.open(provider, path.resolve(dir, 'encTest1'), '1234123', null)).rejects.toThrowError(DecryptionError<DecryptionTarget.Vault>);
-		await expect(Vault.open(provider, path.resolve(dir, 'encTest1'), '12341234', null)).resolves.not.toThrowError();
+		await expect(Vault.open(provider, path.resolve(dir, 'encTest1'), '1234123', 'encTest1')).rejects.toThrowError(DecryptionError<DecryptionTarget.Vault>);
+		await expect(Vault.open(provider, path.resolve(dir, 'encTest1'), '12341234', 'encTest1')).resolves.not.toThrowError();
 	});
 	test('Try adding a file in root', async () => {
 		const v = await Vault.create(provider, dir, '12341234', {
