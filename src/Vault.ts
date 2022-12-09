@@ -10,6 +10,7 @@ import { EncryptedFile } from "./encrypted/EncryptedFile";
 import Base64 from "js-base64";
 import b32 from 'base32-encode'
 import { v4 } from "uuid";
+import { EncryptedItem } from "./encrypted/EncryptedItemBase";
 
 type VaultConfigHeader = {
 	kid: string;
@@ -404,7 +405,7 @@ export class Vault {
 	 * @param dirId ID of the directory
 	 * @returns Encrypted items in that directory
 	 */
-	async listItems(dirId: DirID){
+	async listItems(dirId: DirID): Promise<EncryptedItem[]>{
 		const enc = await this.listEncrypted(dirId);
 		const pendingNameList: Promise<string>[] = [];
 		for(const item of enc) pendingNameList.push(this.decryptFileName(item, dirId));
@@ -422,7 +423,14 @@ export class Vault {
 			else return await EncryptedDir.open(this, item.name, item.fullName, name, dirId, item.lastMod, shortened);
 		}
 		const tasks = enc.map((item, i) => getItemObj(item, names[i]));
-		return await Promise.all(tasks);
+		if(this.queryOpts.concurrency === -1) return await Promise.all(tasks);
+		else {
+			const chunks = [];
+			const res: EncryptedItem[] = [];
+			while(tasks.length) chunks.push(tasks.splice(0, this.queryOpts.concurrency));
+			for(const c of chunks) res.concat(await Promise.all(c));
+			return res;
+		}
 	}
 
 	/**
@@ -500,6 +508,12 @@ export class Vault {
 		}
 		const delOps: Promise<void>[] = [];
 		for(const d of dirList) delOps.push(this.provider.removeDir(d));
-		await Promise.all(delOps);
+		if(this.queryOpts.concurrency === -1) await Promise.all(delOps);
+		else {
+			const chunks = [];
+			while(delOps.length) chunks.push(delOps.splice(0, this.queryOpts.concurrency));
+			for(const c of chunks) await Promise.all(c);
+		}
+		
 	}
 }
