@@ -5,12 +5,12 @@ import { DataProvider } from "./DataProvider";
 import { DirID, EncryptionKey, Item, ItemPath, MACKey } from "./types";
 import { base64url, jwtVerify, SignJWT } from "jose";
 import { DecryptionError, DecryptionTarget, ExistsError, InvalidSignatureError } from "./Errors";
-import { EncryptedItem } from "./encrypted/EncryptedItemBase";
 import { EncryptedDir } from "./encrypted/EncryptedDir";
 import { EncryptedFile } from "./encrypted/EncryptedFile";
 import Base64 from "js-base64";
 import b32 from 'base32-encode'
 import { v4 } from "uuid";
+import { EncryptedItem } from "./encrypted/EncryptedItemBase";
 
 type VaultConfigHeader = {
 	kid: string;
@@ -54,7 +54,7 @@ type VaultSettings = {
 	scryptBlockSize: number;
 }
 
-type CreateVaultOpts = ({
+type CreateVaultOpts = {
 	/**
 	 * Name of this vault.
 	 * If set, a subdirectory with this name will be created under the specified folder.
@@ -67,8 +67,24 @@ type CreateVaultOpts = ({
 	 * In other words, the vault.cryptomator and masterkey.cryptomator will be created in the specified directory.
 	 */
 	createHere: true;
-}) & Partial<VaultSettings>;
+}
 
+type QueryOpts = {
+	/**
+	 * Max number of queries that should be done in batch.
+	 * Defaults to -1, which represents infinite
+	 * It is recommended that you set this to certain value so that you don't end up mass querying the server.
+	 */
+	concurrency: number;
+}
+
+/**
+ * Vault create function will call the callback function with these values inside to indicate which step the function is currently stuck in.
+ * DupeCheck: Check if vault can be created by verifying there are no files/folders with the same name
+ * KeyGen: Generating keys, scrypt function takes a bit of time
+ * CreatingFiles: Creating and sending *.cryptomator files
+ * CreatingRoot: Creating d directory and root directory
+ */
 export enum CreationStep{
 	DupeCheck,
 	KeyGen,
@@ -87,7 +103,8 @@ export class Vault {
 		public encKey: EncryptionKey,
 		public macKey: MACKey,
 		private siv: SIV,
-		public vaultSettings: VaultSettings
+		public vaultSettings: VaultSettings,
+		public queryOpts: QueryOpts
 	){}
 
 	/**
@@ -95,7 +112,11 @@ export class Vault {
 	 * @param provider File system provider
 	 * @param dir Directory to create this vault
 	 * @param password Vault password
-	 * @param options Vault options, check type properties for more information
+	 * @param options Vault options
+	 * @param options.create Mandatory options regarding how vault should be created
+	 * @param options.vault Option that determines vault configuration
+	 * @param options.queryOpts Option that controls how often the data provider should be queried
+	 * @param options.callback Function to call once a time consuming operation is completed
 	 * @returns The vault object for the newly created vault
 	 * 
 	 * Currently, custom masterkey.cryptomator location and algorithm other than HS256 is not supported.
@@ -105,16 +126,20 @@ export class Vault {
 		provider: DataProvider,
 		dir: string,
 		password: string,
-		options: CreateVaultOpts,
-		callback?: (step: CreationStep) => void
+		options: {
+			create: CreateVaultOpts,
+			vault?: Partial<VaultSettings>
+			queryOpts?: QueryOpts,
+			callback?: (step: CreationStep) => void
+		}
 	) {
 		let name: string;
-		if(callback) callback(CreationStep.DupeCheck);
+		if(options.callback) options.callback(CreationStep.DupeCheck);
 		if (dir.endsWith('/')) dir = dir.slice(0, -1);
-		if (options.name) {
-			dir = dir + '/' + options.name;
+		if (options.create.name) {
+			dir = dir + '/' + options.create.name;
 			if(await provider.exists(dir)) throw new ExistsError(dir);
-			name = options.name;
+			name = options.create.name;
 			await provider.createDir(dir, true);
 		} else {
 			const checkExists = async (dir: string) => {
@@ -128,13 +153,13 @@ export class Vault {
 			const splitted = dir.split('/');
 			name = splitted[splitted.length - 1] ?? 'Root';
 		}
-		if(callback) callback(CreationStep.KeyGen);
-		const sBlockSize = options.scryptBlockSize ?? 8;
-		const sCostParam = options.scryptCostParam ?? 32768;
-		const format = options.format ?? 8;
+		if(options.callback) options.callback(CreationStep.KeyGen);
+		const sBlockSize = options.vault?.scryptBlockSize ?? 8;
+		const sCostParam = options.vault?.scryptCostParam ?? 32768;
+		const format = options.vault?.format ?? 8;
 		const salt = crypto.getRandomValues(new Uint8Array(32));
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), salt, sCostParam, sBlockSize, 1, 32);
-		if(callback) callback(CreationStep.CreatingFiles);
+		if(options.callback) options.callback(CreationStep.CreatingFiles);
 		const encKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
 		const macKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
 		const buffer = new Uint8Array(64);
@@ -182,7 +207,7 @@ export class Vault {
 
 		const vaultFile = await new SignJWT({
 			format: format,
-			shorteningThreshold: options.shorteningThreshold ?? 220,
+			shorteningThreshold: options.vault?.shorteningThreshold ?? 220,
 			jti: v4(),
 			cipherCombo: 'SIV_CTRMAC'
 		}).setProtectedHeader({
@@ -197,14 +222,14 @@ export class Vault {
 				provider.writeFile(`${dir}/vault.cryptomator`, vaultFile),
 				provider.createDir(`${dir}/d`)
 			]);
-			if(callback) callback(CreationStep.CreatingRoot);
+			if(options.callback) options.callback(CreationStep.CreatingRoot);
 
 			const vault = new Vault(provider, dir, name, encKey, macKey, siv, {
-				format: options.format ?? 8,
-				shorteningThreshold: options.shorteningThreshold ?? 220,
+				format: options.vault?.format ?? 8,
+				shorteningThreshold: options.vault?.shorteningThreshold ?? 220,
 				scryptCostParam: sCostParam,
 				scryptBlockSize: sBlockSize
-			});
+			}, options.queryOpts ?? {concurrency: -1});
 			const rootDir = await vault.getRootDir();
 			await provider.createDir(rootDir, true);
 		
@@ -231,6 +256,7 @@ export class Vault {
 	 * @param options.vaultFile: Absolute directory of the vault.cryptomator file
 	 * @param options.masterkeyFile: Absolute directory of the masterkey.cryptomator file
 	 * @param options.onKeyLoad: Callback that is called when the vault.cryptomator and masterkey.cryptomator is loaded
+	 * @param options.queryOpts: Parameter that limits the query sent to the remote storage
 	 * @throws DecryptionError if the given password is wrong
 	 * @throws InvalidSignatureError if the integrity of vault.cryptomator file cannot be verified
 	 */
@@ -242,7 +268,8 @@ export class Vault {
 			options?: {
 				vaultFile?: ItemPath
 				masterkeyFile?: ItemPath
-				onKeyLoad?: () => void
+				onKeyLoad?: () => void,
+				queryOpts?: QueryOpts
 			}
 		) {
 		if (dir.endsWith('/')) dir = dir.slice(0, -1);
@@ -311,7 +338,7 @@ export class Vault {
 			shorteningThreshold: vaultConfig.shorteningThreshold,
 			scryptCostParam: mk.scryptCostParam,
 			scryptBlockSize: mk.scryptBlockSize
-		});
+		}, options?.queryOpts ?? {concurrency: -1});
 	}
 
 	/**
@@ -378,7 +405,7 @@ export class Vault {
 	 * @param dirId ID of the directory
 	 * @returns Encrypted items in that directory
 	 */
-	async listItems(dirId: DirID){
+	async listItems(dirId: DirID): Promise<EncryptedItem[]>{
 		const enc = await this.listEncrypted(dirId);
 		const pendingNameList: Promise<string>[] = [];
 		for(const item of enc) pendingNameList.push(this.decryptFileName(item, dirId));
@@ -396,7 +423,14 @@ export class Vault {
 			else return await EncryptedDir.open(this, item.name, item.fullName, name, dirId, item.lastMod, shortened);
 		}
 		const tasks = enc.map((item, i) => getItemObj(item, names[i]));
-		return await Promise.all(tasks);
+		if(this.queryOpts.concurrency === -1) return await Promise.all(tasks);
+		else {
+			const chunks = [];
+			let res: EncryptedItem[] = [];
+			while(tasks.length) chunks.push(tasks.splice(0, this.queryOpts.concurrency));
+			for(const c of chunks) res = res.concat(await Promise.all(c));
+			return res;
+		}
 	}
 
 	/**
@@ -474,6 +508,12 @@ export class Vault {
 		}
 		const delOps: Promise<void>[] = [];
 		for(const d of dirList) delOps.push(this.provider.removeDir(d));
-		await Promise.all(delOps);
+		if(this.queryOpts.concurrency === -1) await Promise.all(delOps);
+		else {
+			const chunks = [];
+			while(delOps.length) chunks.push(delOps.splice(0, this.queryOpts.concurrency));
+			for(const c of chunks) await Promise.all(c);
+		}
+		
 	}
 }
