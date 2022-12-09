@@ -383,9 +383,7 @@ export class Vault {
 		const pendingNameList: Promise<string>[] = [];
 		for(const item of enc) pendingNameList.push(this.decryptFileName(item, dirId));
 		const names = await Promise.all(pendingNameList);
-		const items: EncryptedItem[] = [];
-		for(let i = 0; i < enc.length; i++) {
-			const item = enc[i];
+		const getItemObj = async (item: Item, name: string) => {
 			let type;
 			let shortened = false;
 			if(item.type === 'd' && item.fullName.endsWith('.c9s')){
@@ -394,10 +392,11 @@ export class Vault {
 				else type = 'd';
 				shortened = true;
 			} else type = item.type;
-			if(type === 'f') items.push(new EncryptedFile(this, item.name, item.fullName, names[i], dirId, item.lastMod, shortened));
-			if(type === 'd') items.push(await EncryptedDir.open(this, item.name, item.fullName, names[i], dirId, item.lastMod, shortened));
+			if(type === 'f') return new EncryptedFile(this, item.name, item.fullName, name, dirId, item.lastMod, shortened);
+			else return await EncryptedDir.open(this, item.name, item.fullName, name, dirId, item.lastMod, shortened);
 		}
-		return items;
+		const tasks = enc.map((item, i) => getItemObj(item, names[i]));
+		return await Promise.all(tasks);
 	}
 
 	/**
