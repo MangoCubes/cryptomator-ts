@@ -334,7 +334,7 @@ export class Vault {
 	async listEncrypted(dirId: DirID){
 		const dir = await this.getDir(dirId);
 		const items = await this.provider.listItems(dir);
-		return items.filter(i => i.name.endsWith('.c9r') && i.name !== 'dirid.c9r'); // TODO: Add a function that decrypts this
+		return items.filter(i => (i.name.endsWith('.c9r') || i.name.endsWith('.c9s')) && i.name !== 'dirid.c9r'); // TODO: Add a function that decrypts this
 	}
 
 	/**
