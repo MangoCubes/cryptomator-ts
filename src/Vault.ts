@@ -77,6 +77,13 @@ type QueryOpts = {
 	concurrency: number;
 }
 
+/**
+ * Vault create function will call the callback function with these values inside to indicate which step the function is currently stuck in.
+ * DupeCheck: Check if vault can be created by verifying there are no files/folders with the same name
+ * KeyGen: Generating keys, scrypt function takes a bit of time
+ * CreatingFiles: Creating and sending *.cryptomator files
+ * CreatingRoot: Creating d directory and root directory
+ */
 export enum CreationStep{
 	DupeCheck,
 	KeyGen,
@@ -104,7 +111,11 @@ export class Vault {
 	 * @param provider File system provider
 	 * @param dir Directory to create this vault
 	 * @param password Vault password
-	 * @param options Vault options, check type properties for more information
+	 * @param options Vault options
+	 * @param options.create Mandatory options regarding how vault should be created
+	 * @param options.vault Option that determines vault configuration
+	 * @param options.queryOpts Option that controls how often the data provider should be queried
+	 * @param options.callback Function to call once a time consuming operation is completed
 	 * @returns The vault object for the newly created vault
 	 * 
 	 * Currently, custom masterkey.cryptomator location and algorithm other than HS256 is not supported.
@@ -244,6 +255,7 @@ export class Vault {
 	 * @param options.vaultFile: Absolute directory of the vault.cryptomator file
 	 * @param options.masterkeyFile: Absolute directory of the masterkey.cryptomator file
 	 * @param options.onKeyLoad: Callback that is called when the vault.cryptomator and masterkey.cryptomator is loaded
+	 * @param options.queryOpts: Parameter that limits the query sent to the remote storage
 	 * @throws DecryptionError if the given password is wrong
 	 * @throws InvalidSignatureError if the integrity of vault.cryptomator file cannot be verified
 	 */
