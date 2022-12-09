@@ -426,9 +426,9 @@ export class Vault {
 		if(this.queryOpts.concurrency === -1) return await Promise.all(tasks);
 		else {
 			const chunks = [];
-			const res: EncryptedItem[] = [];
+			let res: EncryptedItem[] = [];
 			while(tasks.length) chunks.push(tasks.splice(0, this.queryOpts.concurrency));
-			for(const c of chunks) res.concat(await Promise.all(c));
+			for(const c of chunks) res = res.concat(await Promise.all(c));
 			return res;
 		}
 	}
