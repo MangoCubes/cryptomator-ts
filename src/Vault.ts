@@ -5,7 +5,6 @@ import { DataProvider } from "./DataProvider";
 import { DirID, EncryptionKey, Item, ItemPath, MACKey } from "./types";
 import { base64url, jwtVerify, SignJWT } from "jose";
 import { DecryptionError, DecryptionTarget, ExistsError, InvalidSignatureError } from "./Errors";
-import { EncryptedItem } from "./encrypted/EncryptedItemBase";
 import { EncryptedDir } from "./encrypted/EncryptedDir";
 import { EncryptedFile } from "./encrypted/EncryptedFile";
 import Base64 from "js-base64";
@@ -54,7 +53,7 @@ type VaultSettings = {
 	scryptBlockSize: number;
 }
 
-type CreateVaultOpts = ({
+type CreateVaultOpts = {
 	/**
 	 * Name of this vault.
 	 * If set, a subdirectory with this name will be created under the specified folder.
@@ -67,7 +66,16 @@ type CreateVaultOpts = ({
 	 * In other words, the vault.cryptomator and masterkey.cryptomator will be created in the specified directory.
 	 */
 	createHere: true;
-}) & Partial<VaultSettings>;
+}
+
+type QueryOpts = {
+	/**
+	 * Max number of queries that should be done in batch.
+	 * Defaults to -1, which represents infinite
+	 * It is recommended that you set this to certain value so that you don't end up mass querying the server.
+	 */
+	concurrency: number;
+}
 
 export enum CreationStep{
 	DupeCheck,
@@ -87,7 +95,8 @@ export class Vault {
 		public encKey: EncryptionKey,
 		public macKey: MACKey,
 		private siv: SIV,
-		public vaultSettings: VaultSettings
+		public vaultSettings: VaultSettings,
+		public queryOpts: QueryOpts
 	){}
 
 	/**
@@ -105,16 +114,20 @@ export class Vault {
 		provider: DataProvider,
 		dir: string,
 		password: string,
-		options: CreateVaultOpts,
-		callback?: (step: CreationStep) => void
+		options: {
+			create: CreateVaultOpts,
+			vault?: Partial<VaultSettings>
+			queryOpts?: QueryOpts,
+			callback?: (step: CreationStep) => void
+		}
 	) {
 		let name: string;
-		if(callback) callback(CreationStep.DupeCheck);
+		if(options.callback) options.callback(CreationStep.DupeCheck);
 		if (dir.endsWith('/')) dir = dir.slice(0, -1);
-		if (options.name) {
-			dir = dir + '/' + options.name;
+		if (options.create.name) {
+			dir = dir + '/' + options.create.name;
 			if(await provider.exists(dir)) throw new ExistsError(dir);
-			name = options.name;
+			name = options.create.name;
 			await provider.createDir(dir, true);
 		} else {
 			const checkExists = async (dir: string) => {
@@ -128,13 +141,13 @@ export class Vault {
 			const splitted = dir.split('/');
 			name = splitted[splitted.length - 1] ?? 'Root';
 		}
-		if(callback) callback(CreationStep.KeyGen);
-		const sBlockSize = options.scryptBlockSize ?? 8;
-		const sCostParam = options.scryptCostParam ?? 32768;
-		const format = options.format ?? 8;
+		if(options.callback) options.callback(CreationStep.KeyGen);
+		const sBlockSize = options.vault?.scryptBlockSize ?? 8;
+		const sCostParam = options.vault?.scryptCostParam ?? 32768;
+		const format = options.vault?.format ?? 8;
 		const salt = crypto.getRandomValues(new Uint8Array(32));
 		const kekBuffer = await scrypt(new TextEncoder().encode(password), salt, sCostParam, sBlockSize, 1, 32);
-		if(callback) callback(CreationStep.CreatingFiles);
+		if(options.callback) options.callback(CreationStep.CreatingFiles);
 		const encKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
 		const macKeyBuffer = crypto.getRandomValues(new Uint8Array(32));
 		const buffer = new Uint8Array(64);
@@ -182,7 +195,7 @@ export class Vault {
 
 		const vaultFile = await new SignJWT({
 			format: format,
-			shorteningThreshold: options.shorteningThreshold ?? 220,
+			shorteningThreshold: options.vault?.shorteningThreshold ?? 220,
 			jti: v4(),
 			cipherCombo: 'SIV_CTRMAC'
 		}).setProtectedHeader({
@@ -197,14 +210,14 @@ export class Vault {
 				provider.writeFile(`${dir}/vault.cryptomator`, vaultFile),
 				provider.createDir(`${dir}/d`)
 			]);
-			if(callback) callback(CreationStep.CreatingRoot);
+			if(options.callback) options.callback(CreationStep.CreatingRoot);
 
 			const vault = new Vault(provider, dir, name, encKey, macKey, siv, {
-				format: options.format ?? 8,
-				shorteningThreshold: options.shorteningThreshold ?? 220,
+				format: options.vault?.format ?? 8,
+				shorteningThreshold: options.vault?.shorteningThreshold ?? 220,
 				scryptCostParam: sCostParam,
 				scryptBlockSize: sBlockSize
-			});
+			}, options.queryOpts ?? {concurrency: -1});
 			const rootDir = await vault.getRootDir();
 			await provider.createDir(rootDir, true);
 		
@@ -242,7 +255,8 @@ export class Vault {
 			options?: {
 				vaultFile?: ItemPath
 				masterkeyFile?: ItemPath
-				onKeyLoad?: () => void
+				onKeyLoad?: () => void,
+				queryOpts?: QueryOpts
 			}
 		) {
 		if (dir.endsWith('/')) dir = dir.slice(0, -1);
@@ -311,7 +325,7 @@ export class Vault {
 			shorteningThreshold: vaultConfig.shorteningThreshold,
 			scryptCostParam: mk.scryptCostParam,
 			scryptBlockSize: mk.scryptBlockSize
-		});
+		}, options?.queryOpts ?? {concurrency: -1});
 	}
 
 	/**
