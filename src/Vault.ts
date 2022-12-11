@@ -405,11 +405,12 @@ export class Vault {
 	 * @param dirId ID of the directory
 	 * @returns Encrypted items in that directory
 	 */
-	async listItems(dirId: DirID): Promise<EncryptedItem[]>{
+	async listItems(dirId: DirID, callback?: (current: number, total: number) => void): Promise<EncryptedItem[]>{
 		const enc = await this.listEncrypted(dirId);
 		const pendingNameList: Promise<string>[] = [];
 		for(const item of enc) pendingNameList.push(this.decryptFileName(item, dirId));
 		const names = await Promise.all(pendingNameList);
+		let done = 0;
 		const getItemObj = async (item: Item, name: string) => {
 			let type;
 			let shortened = false;
@@ -419,6 +420,8 @@ export class Vault {
 				else type = 'd';
 				shortened = true;
 			} else type = item.type;
+			done++;
+			if (callback) callback(done, names.length);
 			if(type === 'f') return new EncryptedFile(this, item.name, item.fullName, name, dirId, item.lastMod, shortened);
 			else return await EncryptedDir.open(this, item.name, item.fullName, name, dirId, item.lastMod, shortened);
 		}
