@@ -33,7 +33,9 @@ export class TargetFS{
 
 	static async create(provider: LocalStorageProvider, dir: string, id: number, len: number){
 		const v = await Vault.create(provider, dir, '12341234', {
-			name: `encTest${id}`
+			create:{
+				name: `encTest${id}`
+			}
 		});
 		const path: DirID[] = [];
 		const tree: {[key: string]: SimpleItem[]} = {'': []};
