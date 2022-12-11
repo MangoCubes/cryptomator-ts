@@ -1,7 +1,7 @@
 import { AES } from "@stablelib/aes";
 import { SIV } from "@stablelib/siv";
 import { scrypt } from "scrypt-js";
-import { DataProvider } from "./DataProvider";
+import { DataProvider, ProgressCallback } from "./DataProvider";
 import { DirID, EncryptionKey, Item, ItemPath, MACKey } from "./types";
 import { base64url, jwtVerify, SignJWT } from "jose";
 import { DecryptionError, DecryptionTarget, ExistsError, InvalidSignatureError } from "./Errors";
@@ -405,10 +405,19 @@ export class Vault {
 	 * @param dirId ID of the directory
 	 * @returns Encrypted items in that directory
 	 */
-	async listItems(dirId: DirID, callback?: (current: number, total: number) => void): Promise<EncryptedItem[]>{
+	async listItems(dirId: DirID, callback?: {
+		type?: ProgressCallback,
+		name?: ProgressCallback
+	}): Promise<EncryptedItem[]>{
 		const enc = await this.listEncrypted(dirId);
 		const pendingNameList: Promise<string>[] = [];
-		for(const item of enc) pendingNameList.push(this.decryptFileName(item, dirId));
+		let nameDone = 0;
+		const getFileName = async (item: Item) => {
+			const ret = await this.decryptFileName(item, dirId);
+			if(callback?.name) callback.name(nameDone, enc.length);
+			return ret;
+		}
+		for(const item of enc) pendingNameList.push(getFileName(item));
 		const names = await Promise.all(pendingNameList);
 		let done = 0;
 		const getItemObj = async (item: Item, name: string) => {
@@ -421,7 +430,7 @@ export class Vault {
 				shortened = true;
 			} else type = item.type;
 			done++;
-			if (callback) callback(done, names.length);
+			if (callback?.type) callback.type(done, names.length);
 			if(type === 'f') return new EncryptedFile(this, item.name, item.fullName, name, dirId, item.lastMod, shortened);
 			else return await EncryptedDir.open(this, item.name, item.fullName, name, dirId, item.lastMod, shortened);
 		}
