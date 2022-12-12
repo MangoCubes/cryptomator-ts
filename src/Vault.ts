@@ -403,6 +403,8 @@ export class Vault {
 	/**
 	 * List all files, ready for decrypting contents
 	 * @param dirId ID of the directory
+	 * @param callback.type Optional callback that gets called when the type of file is determined
+	 * @param callback.name Optional callback that gets called upon successful name decryption
 	 * @returns Encrypted items in that directory
 	 */
 	async listItems(dirId: DirID, callback?: {
@@ -414,6 +416,7 @@ export class Vault {
 		let nameDone = 0;
 		const getFileName = async (item: Item) => {
 			const ret = await this.decryptFileName(item, dirId);
+			nameDone++;
 			if(callback?.name) callback.name(nameDone, enc.length);
 			return ret;
 		}

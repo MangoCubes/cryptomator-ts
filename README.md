@@ -11,4 +11,4 @@ Read and write files into a Cryptomator vault using this library
  - [x] Filename shortening
  - [ ] Symlinks
  - [ ] Backup directory ID
- - [ ] Progress callbacks (A callback that is called every time part of download/encryption/etc is done)
+ - [x] Progress callbacks (A callback that is called every time part of download/encryption/etc is done)
