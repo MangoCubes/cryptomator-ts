@@ -4,13 +4,22 @@ import { DirID } from "../src/types";
 import { Vault } from "../src/Vault";
 import crypto from 'node:crypto';
 
-type SimpleItem = {
+type SimpleFile = {
 	type: 'f';
 	name: string;
-} | {
+};
+
+type SimpleDir = {
 	type: 'd';
 	name: string;
 	id: DirID;
+};
+
+type SimpleItem = SimpleFile | SimpleDir;
+
+type DirInfo = {
+	children: SimpleItem[];
+	parent: DirID | null;
 }
 
 function makeId(len: number) {
@@ -22,7 +31,7 @@ function makeId(len: number) {
 
 export class TargetFS{
 
-	private constructor(public vault: Vault, public tree: {[key: DirID]: SimpleItem[]}){}
+	private constructor(public vault: Vault, public tree: {[key: DirID]: DirInfo}){}
 
 	/**
 	 * Creates random files and folders
@@ -38,7 +47,10 @@ export class TargetFS{
 			}
 		});
 		const path: DirID[] = [];
-		const tree: {[key: string]: SimpleItem[]} = {'': []};
+		const tree: {[key: string]: DirInfo} = {'': {
+			children: [],
+			parent: null
+		}};
 		for(let i = 0; i < 1000; i++){
 			const action = Math.floor(Math.random() * (path.length === 0 ? 2 : 3));
 			const last = path.length === 0 ? '' as DirID : path[path.length - 1];
@@ -46,15 +58,17 @@ export class TargetFS{
 				const name = makeId(len);
 				const content = crypto.createHash('sha256').update(name).digest();
 				await EncryptedFile.encrypt(v, name, last, content);
-				if(tree[last]) tree[last].push({type: 'f', name: name});
-				else tree[last] = [{type: 'f', name: name}];
+				tree[last].children.push({type: 'f', name: name});
 			} else if(action === 1){
 				const name = makeId(len);
 				const dir = await v.createDirectory(name, last);
 				const dirId = await dir.getDirId();
 				path.push(dirId);
-				tree[last].push({type: 'd', name: name, id: dirId});
-				tree[dirId] = [];
+				tree[last].children.push({type: 'd', name: name, id: dirId});
+				tree[dirId] = {
+					children: [],
+					parent: last
+				};
 			} else if(action === 2) path.pop();
 		}
 		return new TargetFS(v, tree);
@@ -66,12 +80,13 @@ export class TargetFS{
 			const current = folders.pop() as DirID;
 			const vaultItems = await this.vault.listItems(current);
 			const mockItems = this.tree[current];
-			if(vaultItems.length !== mockItems.length) throw new Error(`The following directory contains differing number of items: "${current}"`)
+			if(vaultItems.length !== mockItems.children.length) throw new Error(`The following directory contains differing number of items: "${current}"`);
+			const children = [...mockItems.children];
 			vaultItems.sort((a, b) => a.decryptedName.localeCompare(b.decryptedName));
-			mockItems.sort((a, b) => a.name.localeCompare(b.name));
+			children.sort((a, b) => a.name.localeCompare(b.name));
 			for(let i = 0; i < vaultItems.length; i++){
 				const a = vaultItems[i];
-				const b = mockItems[i];
+				const b = children[i];
 				if(b.name !== a.decryptedName || b.type !== a.type) throw new Error(`The following have different name or type: ${a}, ${b}`);
 				if(a.type === 'd' && b.type === 'd'){
 					const dirA = await a.getDirId();
@@ -92,24 +107,25 @@ export class TargetFS{
 
 	moveFolder(target: DirID, parent: DirID, under: DirID){
 		const children = this.tree[parent];
-		const index = children.findIndex(v => v.type === 'd' && v.id === target);
+		const index = children.children.findIndex(v => v.type === 'd' && v.id === target);
 		if(index === -1) throw new Error('Target folder does not exist under parent.');
-		const targetFolder = children.splice(index, 1);
+		const targetFolder = children.children.splice(index, 1)[0] as SimpleDir;
 		this.tree[parent] = children;
-		this.tree[under].push(targetFolder[0]);
+		this.tree[under].children.push(targetFolder);
+		this.tree[targetFolder.id].parent = under;
 	}
 
 	delFolder(parent: DirID, id: DirID){
 		const folders = [id];
 		while(folders.length){
 			const current = folders.pop() as DirID;
-			const items = this.tree[current];
+			const items = this.tree[current].children;
 			for(const i of items) if(i.type === 'd') folders.push(i.id);
 			delete this.tree[current];
 		}
-		for(let i = 0; i < this.tree[parent].length; i++){
-			const dir = this.tree[parent][i];
-			if(dir.type === 'd' && dir.id === id) this.tree[parent].splice(i, 1);
+		for(let i = 0; i < this.tree[parent].children.length; i++){
+			const dir = this.tree[parent].children[i];
+			if(dir.type === 'd' && dir.id === id) this.tree[parent].children.splice(i, 1);
 		}
 		return null;
 	}
