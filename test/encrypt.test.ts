@@ -74,7 +74,7 @@ describe('Test creating a vault', () => {
 			for(const k in sample.tree){
 				// Open a directory with parent ID of dirId
 				const dirId = k as DirID;
-				for(const item of sample.tree[dirId]){
+				for(const item of sample.tree[dirId].children){
 					if(item.type === 'f') continue;
 					// Randomly select a directory within that parent directory
 					if(Math.floor(Math.random() * 5) === 0){
@@ -96,7 +96,7 @@ describe('Test creating a vault', () => {
 			for(const k in sample.tree){
 				// Open a directory with parent ID of dirId
 				const dirId = k as DirID;
-				for(const item of sample.tree[dirId]){
+				for(const item of sample.tree[dirId].children){
 					if(item.type === 'f') continue;
 					// Randomly select a directory within that parent directory
 					if(Math.floor(Math.random() * 5) === 0){
