@@ -67,10 +67,11 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 	/**
 	 * Create a directory under this directory
 	 * @param name Name of the new directory
+	 * @param fixedId ID of the directory to create, will be random if not specified
 	 * @returns New EncryptedDir object that corresponds to the created directory
 	 */
-	async createDirectory(name: string){
-		return await this.vault.createDirectory(name, await this.getDirId());
+	async createDirectory(name: string, fixedId?: DirID | null){
+		return await this.vault.createDirectory(name, await this.getDirId(), fixedId);
 	}
 
 	/**
@@ -88,5 +89,13 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 	 */
 	async createFile(name: string, content: Uint8Array | string){
 		return await EncryptedFile.encrypt(this.vault, name, this, content);
+	}
+
+	/**
+	 * Move a directory under another directory
+	 * @param dir Directory this folder should be moved under
+	 */
+	async moveDir(dir: EncryptedDir){
+		return await dir.createDirectory(this.decryptedName, this.dirId);
 	}
 }

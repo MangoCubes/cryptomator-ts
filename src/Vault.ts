@@ -452,10 +452,11 @@ export class Vault {
 	 * Create a directory under a given directory ID
 	 * @param name Name of the folder
 	 * @param parent Directory ID of the parent folder
+	 * @param fixedId ID of the directory to create, will be random if not specified
 	 * @returns New EncryptedDir object that corresponds to the new directory
 	 */
-	async createDirectory(name: string, parent: DirID){
-		const dirId = v4() as DirID;
+	async createDirectory(name: string, parent: DirID, fixedId?: DirID | null){
+		const dirId = ((fixedId || fixedId === null) ? fixedId : v4()) as DirID;
 		const encDir = await this.getDir(parent);
 		const encName = await this.encryptFileName(name, parent);
 		const needsToBeShortened = encName.length > this.vaultSettings.shorteningThreshold;
