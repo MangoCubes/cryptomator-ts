@@ -1,4 +1,6 @@
 node_modules/
 dist/
 test/encryptionTest/*
+test/decryptionTest/*
+test/modifyTest/*
 test/output/

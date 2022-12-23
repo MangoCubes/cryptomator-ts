@@ -90,6 +90,15 @@ export class TargetFS{
 		return 'Identical' as const;
 	}
 
+	moveFolder(target: DirID, parent: DirID, under: DirID){
+		const children = this.tree[parent];
+		const index = children.findIndex(v => v.type === 'd' && v.id === target);
+		if(index === -1) throw new Error('Target folder does not exist under parent.');
+		const targetFolder = children.splice(index, 1);
+		this.tree[parent] = children;
+		this.tree[under].push(targetFolder[0]);
+	}
+
 	delFolder(parent: DirID, id: DirID){
 		const folders = [id];
 		while(folders.length){
