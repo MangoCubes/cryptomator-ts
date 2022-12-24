@@ -18,6 +18,12 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 	 * @param options.cacheDirId If true, the ID of the directory will be queried, and cached into the object.
 	 * @param options.dirId If set, this ID will be cached and used. Do not set this if you are not certain it is the correct directory ID. Overrides options.cacheDirId
 	 * @returns EncryptedDir object
+	 * 
+	 * If this object corresponds to the root folder, then the following are always true:
+	 * - this.parent is null
+	 * - this.name is "" (empty)
+	 * - this.decryptedName is "root"
+	 * - this.getDirId() always returns ""
 	 */
 	static async open(
 		vault: Vault,
@@ -52,6 +58,7 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 	 * Calling this method will cache ID if it is not already.
 	 */
 	async getDirId(clearCache?: true){
+		if(this.parentId === null) return '' as DirID;
 		if(clearCache || !this.dirId) this.dirId = await this.vault.provider.readFileString(this.fullName + '/dir.c9r') as DirID;
 		return this.dirId;
 	}

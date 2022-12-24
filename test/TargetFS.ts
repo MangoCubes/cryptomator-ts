@@ -81,7 +81,7 @@ export class TargetFS{
 	async verify(){
 		const folders = ['' as DirID];
 		while(folders.length){
-			const current = folders.pop() as DirID;
+			const current = folders.pop()!;
 			const vaultItems = await this.vault.listItems(current);
 			const mockItems = this.tree[current];
 			if(vaultItems.length !== mockItems.children.length) throw new Error(`The following directory contains differing number of items: "${current}"`);
