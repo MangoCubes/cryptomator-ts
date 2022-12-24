@@ -56,7 +56,30 @@ describe('Test opening an existing vault', () => {
 	
 	test('Try decrypting names of items in root', async () => {
 		const vault = await decrypt(provider, 'qq11@@11', 1);
-		await expect(vault.listItems('' as DirID)).resolves.not.toThrowError();
+		const f = async () => {
+			const count = [0, 0];
+			const items = await vault.listItems('' as DirID);
+			for(const i of items){
+				if(i.type === 'd') count[0]++;
+				else if(i.type === 'f') count[1]++;
+			}
+			return count;
+		}
+		await expect(f()).resolves.toStrictEqual([4, 1]);
+	});
+
+	test('Try decrypting names of items in root using root dir object', async () => {
+		const vault = await decrypt(provider, 'qq11@@11', 1);
+		const f = async () => {
+			const count = [0, 0];
+			const items = await (await vault.getRootDir()).listItems();
+			for(const i of items){
+				if(i.type === 'd') count[0]++;
+				else if(i.type === 'f') count[1]++;
+			}
+			return count;
+		}
+		await expect(f()).resolves.toStrictEqual([4, 1]);
 	});
 
 	test('Try getting directory ID of folders in root', async () => {
