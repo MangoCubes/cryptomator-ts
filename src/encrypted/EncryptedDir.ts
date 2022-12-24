@@ -24,7 +24,7 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 		name: string,
 		fullName: ItemPath,
 		decryptedName: string,
-		parent: DirID,
+		parent: DirID | null,
 		lastMod: Date,
 		shortened: boolean,
 		options?: {
@@ -38,7 +38,7 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 		return new EncryptedDir(vault, name, fullName, decryptedName, parent, lastMod, dirId, shortened);
 	}
 
-	private constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, parent: DirID, lastMod: Date, dirId: DirID | null, shortened: boolean){
+	private constructor(vault: Vault, name: string, fullName: ItemPath, decryptedName: string, parent: DirID | null, lastMod: Date, dirId: DirID | null, shortened: boolean){
 		super(vault, name, fullName, decryptedName, parent, lastMod, shortened);
 		this.dirId = dirId;
 		this.type = 'd';

@@ -230,7 +230,7 @@ export class Vault {
 				scryptCostParam: sCostParam,
 				scryptBlockSize: sBlockSize
 			}, options.queryOpts ?? {concurrency: -1});
-			const rootDir = await vault.getRootDir();
+			const rootDir = await vault.getRootDirPath();
 			await provider.createDir(rootDir, true);
 		
 			return vault;
@@ -368,7 +368,7 @@ export class Vault {
 	 * Get directory of the root directory
 	 * @returns Encrypted directory that corresponds to the root directory (Directory with ID of "")
 	 */
-	async getRootDir(){
+	async getRootDirPath(){
 		return await this.getDir('' as DirID);
 	}
 
@@ -486,6 +486,14 @@ export class Vault {
 		}
 		return await EncryptedDir.open(this, encName, encDir, name, parent, new Date(), needsToBeShortened, {dirId: dirId});
 		// await this.provider.writeFile(`${dirFolder}/dirid.c9r`, ) TODO: https://docs.cryptomator.org/en/latest/security/architecture/#backup-directory-ids
+	}
+
+	/**
+	 * Get EncryptedDir that corresponds to root directory
+	 * @returns EncryptedDir that corresponds to the root folder
+	 */
+	async getRootDir(){
+		return await EncryptedDir.open(this, '', await this.getRootDirPath(), 'Root', null, new Date(), false, {dirId: '' as DirID});
 	}
 	
 	/**

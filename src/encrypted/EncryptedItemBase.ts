@@ -9,7 +9,7 @@ export abstract class EncryptedItemBase implements ItemBase{
 		public name: string,
 		public fullName: ItemPath,
 		public decryptedName: string,
-		public parentId: DirID,
+		public parentId: DirID | null,
 		public lastMod: Date,
 		public shortened: boolean
 	){
