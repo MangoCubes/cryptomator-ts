@@ -144,4 +144,30 @@ export class TargetFS{
 		}
 		return null;
 	}
+
+	/**
+	 * Find a replacement parent
+	 * @param target The foldet that should be moved
+	 * @returns The ID of the folder it was moved into
+	 */
+	randomMove(target: DirID): DirID{
+		if(target === '') throw new Error('Cannot move root folder.');
+		// Cannot be null, but can be "" (representing that this folder will go under root).
+		let parent = this.tree[target].parent!;
+		const action = Math.floor(Math.random() * 2);
+		/**
+		 * 0: Destination parent folder becomes the one up one folder. Will be no-op if the current folder is already root.
+		 * 1: Destination parent folder becomes a random children folder. Will be no-op if none found, or the chosen folder is the target folder.
+		 */
+		// Only DirID of "" has parent directory of null.
+		if(action === 0 && parent !== '') parent = this.tree[parent].parent!;
+		else if(action === 1){
+			const folders = this.tree[parent].children.filter(v => v.type === 'd') as SimpleDir[];
+			const randIndex = Math.floor(Math.random() * folders.length);
+			const cand = folders[randIndex].id;
+			if(cand !== target) parent = cand;
+		}
+		this.moveFolder(target, parent);
+		return parent;
+	}
 }
