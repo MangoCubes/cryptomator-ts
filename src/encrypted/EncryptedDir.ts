@@ -103,6 +103,7 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 	 * @param dir Directory this folder should be moved under
 	 */
 	async moveDir(dir: EncryptedDir){
+		if(await dir.getDirId() === this.parentId) return null;
 		// Create a folder with directory ID under a new parent
 		const newParent = await dir.createDirectory(this.decryptedName, this.dirId);
 		// Delete the original folder that contains directory ID
