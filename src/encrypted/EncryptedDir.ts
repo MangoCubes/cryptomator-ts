@@ -11,7 +11,7 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 	 * Construct a directory object. Use this instead of default constructor as this provides additional options.
 	 * @param vault Vault object that can decrypt this directory
 	 * @param name Encrypted directory name
-	 * @param fullName *Encrypted* directory that corresponds to this object
+	 * @param fullName *Encrypted* directory that corresponds to this object (The folder that contains dir.c9r)
 	 * @param decryptedName Name of the folder after decryption
 	 * @param parent Directory ID of the parent folder
 	 * @param lastMod Last modification date
