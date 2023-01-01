@@ -15,6 +15,11 @@ type SimpleDir = {
 	id: DirID;
 };
 
+type Rename = {
+	from: string;
+	to: string;
+}
+
 type SimpleItem = SimpleFile | SimpleDir;
 
 type DirInfo = {
@@ -54,13 +59,17 @@ export class TargetFS{
 			const action = Math.floor(Math.random() * (path.length === 0 ? 2 : 3));
 			const last = path.length === 0 ? '' as DirID : path[path.length - 1];
 			/**
-			 * 0: Create a file in the current directory. Name is a random UUID, and its content is SHA-256 of the decrypted name.
-			 * 1: Create a directory, and go into it. Name is a randomly generated UUID.
+			 * 0: Create a file in the current directory. Name is a random string consisting of two parts separated by a comma.
+			 * 	  File content is SHA-256 of the second part of the name.
+			 * 1: Create a directory, and go into it. Name is a randomly generated string.
 			 * 2: Go up a directory. Unavailable if the current directory is root.
 			 */
 			if(action === 0){
-				const name = makeId(len);
-				const content = crypto.createHash('sha256').update(name).digest();
+				const nameLen = Math.floor(len / 2);
+				const firstHalf = makeId(nameLen - 1);
+				const secondHalf = makeId(len - nameLen);
+				const name = `${firstHalf}.${secondHalf}`;
+				const content = crypto.createHash('sha256').update(secondHalf).digest();
 				await EncryptedFile.encrypt(v, name, last, content);
 				tree[last].children.push({type: 'f', name: name});
 			} else if(action === 1){
@@ -78,6 +87,10 @@ export class TargetFS{
 		return new TargetFS(v, tree);
 	}
 
+	/**
+	 * Verifies that the mock FS is identical to the vault, and the files are not corrupted
+	 * @returns "Identical" if they are indeed the same
+	 */
 	async verify(){
 		const folders = ['' as DirID];
 		while(folders.length){
@@ -99,9 +112,9 @@ export class TargetFS{
 					folders.push(dirA);
 				}
 				if(a.type === 'f'){
-					const content = crypto.createHash('sha256').update(a.decryptedName).digest();
+					const content = crypto.createHash('sha256').update(a.decryptedName.split('.')[1]).digest();
 					const decrypted = await a.decrypt();
-					if(Buffer.compare(content, decrypted.content) !== 0) throw new Error(`The following have corrupt contents: ${a}`);
+					if(Buffer.compare(content, decrypted.content) !== 0) throw new Error(`The following have corrupt contents: ${a.fullName}`);
 				}
 			}
 		}
@@ -109,6 +122,11 @@ export class TargetFS{
 		return 'Identical' as const;
 	}
 
+	/**
+	 * Move a folder under another one
+	 * @param target The folder to move
+	 * @param under The folder the target is going into
+	 */
 	moveFolder(target: DirID, under: DirID){
 		//Locate parent folder of the target
 		const parent = this.tree[target].parent;
@@ -170,4 +188,17 @@ export class TargetFS{
 		this.moveFolder(target, parent);
 		return parent;
 	}
+
+	/**
+	 * Randomly renames 1/oneEvery in a single folder
+	 * @param target 
+	 */
+	// randomRename(target: DirID, oneEvery: number): Rename[] {
+	// 	let items = this.tree[target].children;
+	// 	for(const item of items){
+	// 		if(!Math.floor(Math.random() * oneEvery)){
+
+	// 		}
+	// 	}
+	// }
 }
