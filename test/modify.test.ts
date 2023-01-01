@@ -46,7 +46,6 @@ describe('Test modifying the vault', () => {
 					await folder.moveDir(allFolders[parent]);
 				}
 			}
-			console.log(`There should be ${sample.tree['' as DirID].children.length} items in root.`);
 			return await sample.verify();
 		}
 		await expect(f()).resolves.toBe('Identical');

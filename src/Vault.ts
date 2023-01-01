@@ -397,7 +397,10 @@ export class Vault {
 	 */
 	async encryptFileName(name: string, parent: DirID): Promise<string>{
 		const encrypted = this.siv.seal([new TextEncoder().encode(parent)], new TextEncoder().encode(name));
-		return base64url.encode(encrypted);
+		const converted = base64url.encode(encrypted);
+		const paddingNeeded = converted.length % 4;
+		if(paddingNeeded) return converted + '='.repeat(4 - paddingNeeded);
+		else return converted;
 	}
 
 	/**
