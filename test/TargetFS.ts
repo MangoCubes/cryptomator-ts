@@ -191,14 +191,26 @@ export class TargetFS{
 
 	/**
 	 * Randomly renames 1/oneEvery in a single folder
-	 * @param target 
+	 * @param target The folder which has the items that may be renamed
+	 * @param oneEvery Frequency of rename
+	 * @return Name changes
 	 */
-	// randomRename(target: DirID, oneEvery: number): Rename[] {
-	// 	let items = this.tree[target].children;
-	// 	for(const item of items){
-	// 		if(!Math.floor(Math.random() * oneEvery)){
-
-	// 		}
-	// 	}
-	// }
+	randomRename(target: DirID, oneEvery: number): Rename[] {
+		let items = this.tree[target].children;
+		const ret: Rename[] = [];
+		for(let i = 0; i < items.length; i++){
+			if(!Math.floor(Math.random() * oneEvery)){
+				const item = items[i];
+				const splitted = item.name.split(".");
+				splitted[0] = makeId(splitted[0].length);
+				const change: Rename = {
+					from: item.name,
+					to: splitted.join(".")
+				}
+				this.tree[target].children[i].name = change.to;
+				ret.push(change);
+			}
+		}
+		return ret;
+	}
 }
