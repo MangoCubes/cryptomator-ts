@@ -393,7 +393,7 @@ export class Vault {
 	 * Return an encrypted file name
 	 * @param name Original name of the file
 	 * @param parent Directory ID of the parent folder
-	 * @returns Encrypted file name
+	 * @returns Encrypted file name, with padding but not .c9r
 	 */
 	async encryptFileName(name: string, parent: DirID): Promise<string>{
 		const encrypted = this.siv.seal([new TextEncoder().encode(parent)], new TextEncoder().encode(name));
