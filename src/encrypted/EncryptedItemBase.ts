@@ -41,9 +41,7 @@ export abstract class EncryptedItemBase implements ItemBase{
 			if(this.shortened){
 				// TODO
 			} else { // If the old name was not shortened
-				const parentDir = this.fullName.split('/');
-				parentDir[parentDir.length - 1] = encryptedName + '.c9r';
-				await this.vault.provider.rename(this.fullName, parentDir.join('/'));
+				await this.vault.provider.rename(this.fullName, `${parentDir}/${encryptedName}.c9r`);
 			}
 		}
 	}
