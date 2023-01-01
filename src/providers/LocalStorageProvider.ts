@@ -4,6 +4,9 @@ import { promises as fs, existsSync} from "fs";
 import * as p from "path";
 
 export class LocalStorageProvider implements DataProvider{
+	async rename (path: string, newPath: string): Promise<void>{
+		await fs.rename(path, newPath);
+	}
 	async exists (path: string){
 		return existsSync(path);
 	}

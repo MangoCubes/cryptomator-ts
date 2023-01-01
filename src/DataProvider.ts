@@ -14,4 +14,5 @@ export type DataProvider = {
 	 */
 	removeDir: (path: string) => Promise<void>;
 	exists: (path: string) => Promise<boolean>;
+	rename: (path: string, newPath: string) => Promise<void>;
 }
