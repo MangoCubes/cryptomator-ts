@@ -12,6 +12,15 @@ export abstract class EncryptedItemBase implements ItemBase{
 		public decryptedName: string,
 		public parentId: DirID | null,
 		public lastMod: Date,
+		/**
+		 * If shortened:
+		 * this.name contains the content of name.c9s file
+		 * this.fullName points to the directory that contains the name.c9s file
+		 * 
+		 * If not:
+		 * this.fullName points to the directory/file this object corresponds to
+		 * this.name is the last part of this.fullName
+		 */
 		public shortened: boolean
 	){
 
@@ -34,6 +43,7 @@ export abstract class EncryptedItemBase implements ItemBase{
 				const fileNameFile = `${this.fullName}/name.c9s`;
 				await this.vault.provider.writeFile(fileNameFile, encryptedName);
 				await this.vault.provider.rename(this.fullName, fullDir);
+				this.fullName = fullDir;
 			} else {
 				// TODO
 			}
@@ -41,9 +51,13 @@ export abstract class EncryptedItemBase implements ItemBase{
 			if(this.shortened){
 				// TODO
 			} else { // If the old name was not shortened
-				await this.vault.provider.rename(this.fullName, `${parentDir}/${encryptedName}.c9r`);
+				const newName = `${parentDir}/${encryptedName}.c9r` as ItemPath;
+				await this.vault.provider.rename(this.fullName, newName);
+				this.fullName = newName;
 			}
 		}
+		this.name = encryptedName;
+		this.decryptedName = to;
 	}
 }
 
