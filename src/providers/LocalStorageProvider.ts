@@ -47,4 +47,8 @@ export class LocalStorageProvider implements DataProvider{
 	async writeFile(path: string, data: Uint8Array | string){
 		await fs.writeFile(path, data);
 	}
+
+	async move (path: string, newPath: string){
+		await fs.rename(path, newPath);
+	}
 }
