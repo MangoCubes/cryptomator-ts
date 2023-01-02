@@ -50,4 +50,23 @@ describe('Test modifying the vault', () => {
 		}
 		await expect(f()).resolves.toBe('Identical');
 	});
+	test('Create a vault, and rename files and folders', async () => {
+		const sample = await TargetFS.create(provider, dir, 2, 32);
+		const f = async () => {
+			const allFolders = await getAllDirs(sample.vault);
+			for(const k in allFolders){
+				if(k === '') continue;
+				const folder = allFolders[k as DirID];
+				const renames = sample.randomRename(await folder.getDirId(), 3);
+				const items = await sample.vault.listItems(k as DirID);
+				for(const r of renames){
+					const item = items.find(i => i.decryptedName === r.from);
+					if(!item) throw new Error('Item with corresponding name not found.');
+					await item.rename(r.to);
+				}
+			}
+			return await sample.verify();
+		}
+		await expect(f()).resolves.toBe('Identical');
+	});
 });
