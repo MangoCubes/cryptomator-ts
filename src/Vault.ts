@@ -541,6 +541,16 @@ export class Vault {
 			while(delOps.length) chunks.push(delOps.splice(0, this.queryOpts.concurrency));
 			for(const c of chunks) await Promise.all(c);
 		}
-		
+	}
+
+
+	/**
+	 * Move multiple items into a chosen folder.
+	 * Not all items needs to be from a single folder.
+	 * @param items List of items to move
+	 * @param to Move operation destination
+	 */
+	static async move(items: EncryptedItem[], to: DirID){
+		await Promise.all(items.map(v => v.move(to)));
 	}
 }
