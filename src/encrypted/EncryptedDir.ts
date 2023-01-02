@@ -1,3 +1,4 @@
+import { base64url } from "jose";
 import { Directory, DirID, ItemPath } from "../types";
 import { Vault } from "../Vault";
 import { EncryptedFile } from "./EncryptedFile";
@@ -96,19 +97,5 @@ export class EncryptedDir extends EncryptedItemBase implements Directory{
 	 */
 	async createFile(name: string, content: Uint8Array | string){
 		return await EncryptedFile.encrypt(this.vault, name, this, content);
-	}
-
-	/**
-	 * Move a directory under another directory
-	 * @param dir Directory this folder should be moved under
-	 */
-	async moveDir(dir: EncryptedDir){
-		if(await dir.getDirId() === this.parentId) return null;
-		// Create a folder with directory ID under a new parent
-		const newParent = await dir.createDirectory(this.decryptedName, this.dirId);
-		// Delete the original folder that contains directory ID
-		await this.vault.provider.removeDir(this.fullName);
-		this.fullName = newParent.fullName;
-		return newParent;
 	}
 }
