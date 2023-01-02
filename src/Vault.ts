@@ -487,7 +487,7 @@ export class Vault {
 			]);
 			throw e;
 		}
-		return await EncryptedDir.open(this, encName, encDir, name, parent, new Date(), needsToBeShortened, {dirId: dirId});
+		return await EncryptedDir.open(this, encName, dir as ItemPath, name, parent, new Date(), needsToBeShortened, {dirId: dirId});
 		// await this.provider.writeFile(`${dirFolder}/dirid.c9r`, ) TODO: https://docs.cryptomator.org/en/latest/security/architecture/#backup-directory-ids
 	}
 
