@@ -28,19 +28,17 @@ export abstract class EncryptedItemBase implements ItemBase{
 
 	/**
 	 * Move an item under another directory
-	 * @param dir Directory this folder should be moved under
+	 * @param dir ID of the directory the item will go into
 	 */
-	async move(dir: EncryptedDir){
-		const parentId = await dir.getDirId();
-		const parentDir = await this.vault.getDir(parentId);
-		const fileName = await this.vault.encryptFileName(this.decryptedName, parentId);
+	async move(dir: DirID){
+		const parentDir = await this.vault.getDir(dir);
+		const fileName = await this.vault.encryptFileName(this.decryptedName, dir);
 		if(fileName.length > this.vault.vaultSettings.shorteningThreshold){
 			const shortened = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(fileName));
 			const shortDir = base64url.encode(new Uint8Array(shortened));
 			const fileDir = `${parentDir}/${shortDir}.c9s` as ItemPath;
 			await this.vault.provider.move(this.fullName, fileDir);
 			await this.vault.provider.writeFile(`${fileDir}/name.c9s`, fileName);
-			
 		} else {
 			const fileDir = `${parentDir}/${fileName}.c9r` as ItemPath;
 			await this.vault.provider.move(this.fullName, fileDir);

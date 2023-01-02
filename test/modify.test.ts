@@ -43,7 +43,7 @@ describe('Test modifying the vault', () => {
 				const action = Math.floor(Math.random() * 2);
 				if(action){
 					const parent = sample.randomMove(await folder.getDirId());
-					await folder.move(allFolders[parent]);
+					await folder.move(parent);
 				}
 			}
 			return await sample.verify();
